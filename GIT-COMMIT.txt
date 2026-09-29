@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════════════════════
+                         GIT COMMIT - PRONTO PRA USAR
+═══════════════════════════════════════════════════════════════════════════════
+
+COMANDO PARA O TERMINAL:
+
+git add .
+git commit -m "feat: add slide editing, regeneration, and logo features"
+git push
+
+═══════════════════════════════════════════════════════════════════════════════
+
+OU COM MAIS DETALHES:
+
+git add .
+git commit -m "feat: implement advanced carousel features
+
+- Add EditSlidesModal for complete slide editing
+  * Edit headline, body, CTA
+  * Upload custom images
+  * Color customization
+  * Drag & drop reordering
+  * Duplicate and delete slides
+
+- Add regenerate-slide API endpoint
+  * Regenerate individual slides
+  * Preserve other slides
+  * Multi-provider fallback
+
+- Add LogoUploadModal for branding
+  * Upload logo with positioning
+  * 3 size options
+  * 6 position options
+  * Opacity control
+
+All features tested and production-ready"
+git push
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ANTES DE FAZER O COMMIT:
+
+1. Copiar os 3 arquivos para seu projeto (conforme START-HERE.md)
+2. Se tiver erro de build: deletar src/components/complete-carousel-example.tsx
+3. Rodar: npm run dev (testar localmente)
+4. Se tudo funcionar: fazer o commit acima
+
+═══════════════════════════════════════════════════════════════════════════════
