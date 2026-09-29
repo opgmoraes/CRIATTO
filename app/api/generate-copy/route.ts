@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateTextWithFallback } from "../../../lib/ai-providers";
+import { extractArticle } from "../../../lib/extract";
 
 // Seção 8 da especificação: gera hook, título, subtítulo, desenvolvimento,
 // exemplos, destaques, números, frases de impacto e CTA — respeitando o
@@ -29,7 +30,8 @@ Responda em JSON estrito, exatamente neste formato:
       "title": string,       // texto curto, grande, o elemento mais importante do slide
       "subtitle": string,    // opcional, pode ser ""
       "body": string,        // opcional, texto de apoio mais longo, pode ser ""
-      "notes": string        // opcional: sugestão de imagem/ícone para este slide, pode ser ""
+      "notes": string,       // opcional: sugestão de imagem/ícone para este slide, pode ser ""
+      "image_query": string  // 2-4 palavras EM INGLÊS para buscar uma foto de banco de imagens (ex: "laptop code night")
     }
   ]
 }`;
@@ -46,9 +48,20 @@ export async function POST(req: NextRequest) {
       slideCount,
       visualDirection, // resultado opcional de /api/analyze-references . summary_direction
       format, // "carousel" | "post" | "story"
+      articleUrl,
     } = body;
+    let { rawText: raw } = body;
 
-    if (!theme && !rawText) {
+    if (articleUrl) {
+      try {
+        const article = await extractArticle(articleUrl);
+        raw = `${raw ? raw + "\n\n" : ""}CONTEÚDO EXTRAÍDO DO ARTIGO (${articleUrl}):\n${article}`;
+      } catch (e: any) {
+        return NextResponse.json({ error: `URL: ${e.message}` }, { status: 400 });
+      }
+    }
+
+    if (!theme && !raw) {
       return NextResponse.json(
         { error: "Informe pelo menos um tema ou um texto bruto." },
         { status: 400 }
@@ -59,7 +72,7 @@ export async function POST(req: NextRequest) {
 TEMA: ${theme || "(não informado, use o texto bruto abaixo)"}
 
 TEXTO BRUTO / RASCUNHO FORNECIDO PELO USUÁRIO:
-${rawText || "(nenhum, gere a partir do tema apenas — mas não invente fatos específicos, mantenha genérico e sinalize em warnings)"}
+${raw || "(nenhum, gere a partir do tema apenas — mas não invente fatos específicos, mantenha genérico e sinalize em warnings)"}
 
 TOM DE VOZ: ${tone || "direto e claro"}
 PÚBLICO-ALVO: ${audience || "geral"}
