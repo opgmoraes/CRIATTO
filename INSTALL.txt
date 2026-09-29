@@ -1,0 +1,221 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   CRIATTO ADVANCED FEATURES - INSTALLATION                  ║
+║                                                                              ║
+║  ✨ Editar Slides • 🔄 Regenerar Individual • 🎨 Upload de Logo             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📍 PASSO 1: COPIAR ARQUIVOS PARA SEU PROJETO
+
+1. Extrair este ZIP em uma pasta temporária
+2. Copiar os arquivos para seu projeto CRIATTO:
+
+   Windows (PowerShell):
+   xcopy "src\components\*.tsx" "seu_projeto\src\components\" /Y
+   xcopy "app\api\*.ts" "seu_projeto\app\api\" /Y
+
+   Linux/Mac (Terminal):
+   cp -r src/components/*.tsx seu_projeto/src/components/
+   cp -r app/api/*/route.ts seu_projeto/app/api/
+
+   OU MANUALMENTE:
+   - Copiar 5 arquivos .tsx da pasta src/components/ → seu_projeto/src/components/
+   - Copiar 2 arquivos de API routes da pasta app/api/ → seu_projeto/app/api/
+
+ARQUIVOS PARA COPIAR:
+├── src/components/
+│   ├── advanced-generation-modal.tsx      (geração)
+│   ├── edit-slides-modal.tsx              (edição) ⭐
+│   ├── logo-upload-modal.tsx              (logo) ⭐
+│   ├── integration-example.tsx            (exemplo)
+│   └── complete-carousel-example.tsx      (exemplo completo) ⭐
+│
+└── app/api/
+    ├── generate-advanced/route.ts         (API geração)
+    └── regenerate-slide/route.ts          (API regeneração) ⭐
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 PASSO 2: ADICIONAR AOS SEUS COMPONENTES
+
+No seu componente principal (ex: app/page.tsx ou CarouselEditor.tsx):
+
+```tsx
+import { AdvancedGenerationModal } from '@/components/advanced-generation-modal';
+import { EditSlidesModal } from '@/components/edit-slides-modal';      // NOVO
+import { LogoUploadModal } from '@/components/logo-upload-modal';      // NOVO
+```
+
+Adicione os estados:
+
+```tsx
+const [showEditModal, setShowEditModal] = useState(false);             // NOVO
+const [showLogoModal, setShowLogoModal] = useState(false);             // NOVO
+const [logo, setLogo] = useState(null);                               // NOVO
+const [isRegenerating, setIsRegenerating] = useState(false);          // NOVO
+```
+
+Adicione os modais no JSX:
+
+```tsx
+<EditSlidesModal
+  isOpen={showEditModal}
+  onClose={() => setShowEditModal(false)}
+  slides={slides}
+  onSave={handleSaveSlides}
+  onRegenerateSingle={handleRegenerateSingle}
+  isRegenerating={isRegenerating}
+/>
+
+<LogoUploadModal
+  isOpen={showLogoModal}
+  onClose={() => setShowLogoModal(false)}
+  onLogoSelect={handleLogoSelect}
+  currentLogo={logo?.url}
+/>
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 PASSO 3: IMPLEMENTAR OS HANDLERS
+
+Copie esses handlers do arquivo docs/INTEGRATION-ADVANCED.md:
+
+- handleSaveSlides()       (salvar edições)
+- handleRegenerateSingle()  (regenerar 1 slide)
+- handleLogoSelect()        (adicionar logo)
+
+OU copie tudo de uma vez do arquivo:
+  👉 src/components/complete-carousel-example.tsx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 PASSO 4: ADICIONAR BOTÕES
+
+Quando tiver slides gerados, adicione os botões:
+
+```tsx
+{slides.length > 0 && (
+  <>
+    <button onClick={() => setShowEditModal(true)}>
+      ✏️ Editar Slides
+    </button>
+    
+    <button onClick={() => setShowLogoModal(true)}>
+      🎨 Adicionar Logo
+    </button>
+  </>
+)}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 PASSO 5: TESTAR
+
+1. npm run dev
+2. Gerar um carrossel normalmente
+3. Clicar em "✏️ Editar Slides"
+4. Testar:
+   - Editar headline/body
+   - Trocar imagens
+   - Regenerar um slide (🔄)
+   - Reordenar com drag & drop
+5. Clicar em "🎨 Adicionar Logo"
+6. Fazer upload de uma imagem
+7. Conferir logo em todos os slides
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTAÇÃO
+
+Leia os arquivos em docs/:
+
+1. README.md                   - Overview geral
+2. INTEGRATION_GUIDE.md        - Features base
+3. INTEGRATION-ADVANCED.md     - Edição + Regeneração + Logo (⭐ ESSENCIAL)
+4. UPDATE-NEW-FEATURES.md      - O que tem de novo
+5. DELIVERABLES.md            - Checklist completo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 EXEMPLO RÁPIDO (COPY & PASTE)
+
+Se quiser um exemplo pronto pra rodar:
+
+1. Abra: src/components/complete-carousel-example.tsx
+2. Copie o arquivo INTEIRO
+3. Cole em: seu_projeto/app/page.tsx
+4. npm run dev
+5. Pronto! Tá funcionando! ✨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 DICAS IMPORTANTES
+
+✅ NÃO precisa instalar pacotes novos - tudo usa React nativo
+✅ NÃO precisa configurar variáveis de ambiente (igual ao que já tem)
+✅ Compatível com Next.js 14+ e React 18+
+✅ Tailwind CSS para styling (você já tem)
+
+❌ NÃO esqueça de:
+- Importar os componentes
+- Criar os modais no JSX
+- Implementar os 3 handlers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❓ TROUBLESHOOTING
+
+"Modal não aparece"
+→ Verifique se isOpen={true} está sendo passado
+
+"Regeneração não funciona"
+→ Verifique se /api/regenerate-slide/route.ts foi copiada corretamente
+
+"Logo não aparece nos slides"
+→ Verifique se o código de renderização inclui a logo (veja exemplo)
+
+"Estilos estranhos"
+→ Certifique-se de que Tailwind CSS está configurado
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 ESTRUTURA FINAL DO SEU PROJETO
+
+seu_projeto/
+├── src/components/
+│   ├── advanced-generation-modal.tsx
+│   ├── edit-slides-modal.tsx          ← NOVO
+│   ├── logo-upload-modal.tsx          ← NOVO
+│   ├── integration-example.tsx        (pode deletar depois)
+│   └── complete-carousel-example.tsx  (pode deletar depois)
+│
+├── app/api/
+│   ├── generate-advanced/route.ts
+│   ├── regenerate-slide/route.ts      ← NOVO
+│   └── generate-copy/route.ts         (já existe)
+│
+└── docs/                              (adicionar aqui os .md)
+    ├── INTEGRATION-ADVANCED.md
+    └── UPDATE-NEW-FEATURES.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ PRONTO!
+
+Se seguiu tudo certo, você agora tem:
+
+✨ Geração de carrosséis (já tinha)
+✏️ Edição completa de slides (NOVO)
+🔄 Regeneração individual (NOVO)
+🎨 Upload de logo (NOVO)
+
+E tudo pronto pro deploy! 🚀
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Git Commit:
+  git add .
+  git commit -m "feat: add advanced carousel features - edit slides, regenerate, logo upload"
+  git push
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
