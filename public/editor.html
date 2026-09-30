@@ -137,6 +137,21 @@ input,select,textarea{font-family:inherit;}
 ::-webkit-scrollbar{width:8px;height:8px;}
 ::-webkit-scrollbar-thumb{background:#d8d8d2;border-radius:4px;}
 
+.slide-card .content{top:0;display:flex;flex-direction:column;padding:48px 22px 16px;z-index:2}
+.cbody{flex:1;display:flex;flex-direction:column;min-height:0}
+.slide-card .card-title{color:var(--fg);text-shadow:none}
+.slide-card .card-support{color:var(--fg);opacity:.85}
+.slide-card .footer-row{color:var(--fg);opacity:.6}
+.slide-card .dots span{background:var(--fg);opacity:.3}.slide-card .dots span.on{background:var(--ac);opacity:1}
+.deco{position:absolute;z-index:1;pointer-events:none}.frame{position:absolute;z-index:4;pointer-events:none}
+.soc-head{display:flex;align-items:center;gap:9px;margin-bottom:10px;text-align:left}
+.soc-av{width:34px;height:34px;border-radius:50%;object-fit:cover;background:var(--ac);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:none}
+.soc-name{font-weight:800;font-size:13px;display:flex;align-items:center;gap:4px}.soc-handle{font-size:11px;opacity:.6}
+.toolbar-row button.on{background:var(--ink);color:#fff}
+.tpl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tpl-item{cursor:pointer;text-align:center;font-size:12px;font-weight:700}.tpl-item .mini{border-radius:14px;overflow:hidden;margin-bottom:6px;outline:2px solid transparent}.tpl-item:hover .mini{outline-color:var(--accent)}
+.prev-stage{display:flex;align-items:center;justify-content:center;gap:14px;background:#efeeea;border-radius:14px;padding:22px;margin:14px 0}
+.tpl-thumbs{display:flex;gap:8px;justify-content:center;margin-bottom:14px}.tpl-thumbs>div{cursor:pointer;border:2px solid transparent;border-radius:10px;overflow:hidden}.tpl-thumbs>div.on{border-color:var(--accent)}
 .modal-overlay{position:fixed;inset:0;background:rgba(20,20,20,.5);display:none;align-items:center;justify-content:center;z-index:100;}
 .modal-overlay.open{display:flex;}
 .modal{width:640px;max-width:92vw;max-height:88vh;overflow-y:auto;background:#fff;border-radius:18px;padding:26px 28px;}
@@ -188,6 +203,7 @@ input,select,textarea{font-family:inherit;}
     <button class="btn-flat" id="btnDownloadOne">Baixar slide</button>
     <button class="btn-flat" id="btnDownloadAll">Baixar todos</button>
     <span class="spacer"></span>
+    <button class="btn-flat" id="btnTemplates">🎨 Templates</button>
     <button class="ai-pill" id="btnOpenAI">✨ Gerar com IA</button>
     <button class="btn-primary" id="btnPreview">Prévia no feed</button>
   </div>
@@ -216,8 +232,20 @@ input,select,textarea{font-family:inherit;}
 </div>
 
 <input type="file" id="fileInput" accept="image/*" style="display:none">
+<input type="file" id="avatarFileInput" accept="image/*" style="display:none">
 <input type="file" id="logoFileInput" accept="image/*" style="display:none">
 <input type="file" id="refFileInput" accept="image/*" multiple style="display:none">
+
+<div class="modal-overlay" id="tplModal"><div class="modal" style="width:820px">
+  <div id="tplGridView"><h2>Templates</h2><div class="sub">Veja a prévia antes de aplicar. Seus textos são mantidos.</div><div class="tpl-grid" id="tplGrid"></div></div>
+  <div id="tplPrevView" style="display:none;text-align:center">
+    <div class="pill tag" id="tplName" style="display:inline-flex"></div>
+    <div class="prev-stage"><button class="icon-btn" id="tplPrev">‹</button><div id="tplBig"></div><button class="icon-btn" id="tplNext">›</button></div>
+    <div class="tpl-thumbs" id="tplThumbs"></div>
+    <button class="btn-primary" id="tplUse" style="width:100%;padding:14px">Usar esse template</button>
+    <button class="btn-flat" id="tplBack" style="margin-top:8px">← Todos os templates</button>
+  </div>
+</div></div>
 
 <div class="modal-overlay" id="aiModal">
   <div class="modal">
@@ -252,6 +280,14 @@ input,select,textarea{font-family:inherit;}
     <div class="modal-panel" data-panel="style">
       <div class="field"><label>Estilo visual</label><div class="chip-row" id="styleChips"></div></div>
       <div class="field"><label>Direção livre (opcional)</label><textarea id="aiDirection" placeholder="Ex: quero algo editorial, moderno e minimalista"></textarea></div>
+      <div class="field"><label>Template</label><select id="aiTpl"></select></div>
+      <div class="row2">
+        <div class="field"><label>Fundo</label><div class="color-row"><input type="color" id="aiC-bg"></div></div>
+        <div class="field"><label>Texto (primária)</label><div class="color-row"><input type="color" id="aiC-fg"></div></div>
+        <div class="field"><label>Destaque (secundária)</label><div class="color-row"><input type="color" id="aiC-ac"></div></div>
+        <div class="field"><label>Fundo alternativo</label><div class="color-row"><input type="color" id="aiC-alt"></div></div>
+      </div>
+      <div class="row2"><div class="field"><label>Fonte do título</label><select id="aiFh"></select></div><div class="field"><label>Fonte do texto</label><select id="aiFb"></select></div></div>
     </div>
     <div class="modal-actions">
       <div class="ai-status" id="aiStatus"></div>
@@ -263,20 +299,31 @@ input,select,textarea{font-family:inherit;}
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const uid=()=>Math.random().toString(36).slice(2,9);
 function newSlide(i){
   return { id:uid(), label: i===0? "NEWS":"", title:"Título do slide "+(i+1), supportText:"Texto de apoio explicando o contexto deste card.",
-    image:null, cardStyle:"dark", bgColor:"#1c1c22" };
+    image:null, bgColor:"#1c1c22", spec:{bg:'bg',fg:'fg',ac:'ac'}, align:'left', vpos:'bottom', scale:'m', deco:'none', frame:'none', layout:'default' };
 }
-const DEFAULTS = { accent:"#ff5a2c", fonts:{headline:"Inter", body:"Inter"}, logo:null, ctx:{} };
-const FONTS_H=["Inter","Montserrat","Playfair Display","Poppins","DM Serif Display"], FONTS_B=["Inter","Open Sans","Lato","Roboto"];
-const TEMPLATES={
-  "Product Showcase":{cardStyle:"dark",bg:"#0f172a",accent:"#ff6b35",fh:"Montserrat",fb:"Inter"},
-  "Foto + Tipografia":{cardStyle:"dark",bg:"#1c1c22",accent:"#f7b801",fh:"Playfair Display",fb:"Lato"},
-  "Minimalista":{cardStyle:"light",bg:"#ffffff",accent:"#111111",fh:"Inter",fb:"Inter"},
-  "Vibrante":{cardStyle:"dark",bg:"#7c3aed",accent:"#f7b801",fh:"Poppins",fb:"Open Sans"}
-};
+const DEFAULTS={pal:{bg:"#1c1c22",fg:"#ffffff",ac:"#ff5a2c",alt:"#ff5a2c"},fonts:{headline:"Inter",body:"Inter"},logo:null,ctx:{},profile:{name:"Seu Nome",verified:true,avatar:null}};
+const FONT_BANK=[["Inter","400;700;900","Sans-serif"],["Montserrat","400;700;900","Sans-serif"],["Poppins","400;700;900","Sans-serif"],["Space Grotesk","400;700","Sans-serif"],["Archivo","400;700;900","Sans-serif"],["Manrope","400;700;800","Sans-serif"],["Plus Jakarta Sans","400;700;800","Sans-serif"],["DM Sans","400;700","Sans-serif"],["Outfit","400;700;900","Sans-serif"],["Sora","400;700;800","Sans-serif"],["Work Sans","400;700;900","Sans-serif"],["Rubik","400;700;900","Sans-serif"],["Lato","400;700;900","Sans-serif"],["Open Sans","400;700;800","Sans-serif"],["Roboto","400;700;900","Sans-serif"],["Nunito","400;700;900","Sans-serif"],["IBM Plex Sans","400;700","Sans-serif"],["Lexend","400;700;900","Sans-serif"],
+["Anton","400","Display"],["Bebas Neue","400","Display"],["Oswald","400;700","Display"],["Archivo Black","400","Display"],["Bowlby One","400","Display"],["Big Shoulders Display","400;700;900","Display"],["League Gothic","400","Display"],["Unbounded","400;700;900","Display"],["Syne","400;700;800","Display"],["Abril Fatface","400","Display"],
+["Playfair Display","400;700;900","Serif"],["DM Serif Display","400","Serif"],["Fraunces","400;700;900","Serif"],["Instrument Serif","400","Serif"],["Bodoni Moda","400;700;900","Serif"],["Libre Baskerville","400;700","Serif"],["Merriweather","400;700;900","Serif"],["Lora","400;700","Serif"],
+["Caveat","400;700","Manuscrita / Mono"],["Permanent Marker","400","Manuscrita / Mono"],["Space Mono","400;700","Manuscrita / Mono"],["JetBrains Mono","400;700","Manuscrita / Mono"]];
+const FONT_W=Object.fromEntries(FONT_BANK.map(f=>[f[0],f[1]])), loadedFonts=new Set();
+function ensureFont(n){ if(!n||loadedFonts.has(n)) return; loadedFonts.add(n); const l=document.createElement('link'); l.rel='stylesheet'; l.href='https://fonts.googleapis.com/css2?family='+n.replace(/ /g,'+')+(FONT_W[n]?':wght@'+FONT_W[n]:'')+'&display=swap'; document.head.appendChild(l); }
+function fontOpts(cur){ const c={}; FONT_BANK.forEach(f=>(c[f[2]]=c[f[2]]||[]).push(f[0])); let h=Object.entries(c).map(([k,l])=>`<optgroup label="${k}">${l.map(n=>`<option ${n===cur?'selected':''}>${n}</option>`).join('')}</optgroup>`).join(''); if(!FONT_W[cur]) h=`<option selected>${escapeHtml(cur)}</option>`+h; return h; }
+const sp=(bg,fg,ac,o={})=>({bg,fg,ac,align:'left',vpos:'bottom',scale:'m',deco:'none',frame:'none',layout:'default',...o});
+const TEMPLATES=[
+ {name:"Rede Social",pal:{bg:"#ffffff",fg:"#0f1419",ac:"#1d9bf0",alt:"#0f1419"},fonts:["Inter","Inter"],slides:[sp('bg','fg','ac',{layout:'social',vpos:'middle',scale:'s'}),sp('bg','fg','ac',{layout:'social',vpos:'middle',scale:'s'}),sp('alt','bg','ac',{layout:'social',vpos:'middle',scale:'s'})]},
+ {name:"Neon Brutal",pal:{bg:"#0a0a0a",fg:"#ffffff",ac:"#d4ff3a",alt:"#d4ff3a"},fonts:["Archivo","Archivo"],slides:[sp('bg','fg','ac',{deco:'grid',vpos:'middle',align:'center',scale:'l'}),sp('bg','ac','ac',{deco:'grid',vpos:'middle'}),sp('alt','bg','bg',{deco:'burst',frame:'round',vpos:'middle'})]},
+ {name:"Lilás Business",pal:{bg:"#3b1747",fg:"#e4dcff",ac:"#c8ff7a",alt:"#d9d0ff"},fonts:["Sora","Sora"],slides:[sp('bg','fg','ac',{deco:'asterisk',scale:'l'}),sp('alt','bg','bg',{deco:'circle',vpos:'middle',align:'center'}),sp('ac','bg','bg',{deco:'arrow',vpos:'top',scale:'l'})]},
+ {name:"Azul Editorial",pal:{bg:"#1f5eff",fg:"#ffffff",ac:"#c6ff5a",alt:"#20222b"},fonts:["Poppins","Poppins"],slides:[sp('bg','fg','ac',{deco:'dots',vpos:'middle',align:'center',scale:'l'}),sp('alt','fg','ac',{deco:'burst',vpos:'top'}),sp('bg','fg','ac',{frame:'thick',vpos:'middle',align:'center',scale:'l'})]},
+ {name:"Laranja Impacto",pal:{bg:"#ff6a13",fg:"#111111",ac:"#ffc400",alt:"#ffffff"},fonts:["Anton","Archivo"],slides:[sp('bg','fg','alt',{deco:'stripes',scale:'l',vpos:'middle',frame:'line'}),sp('alt','fg','bg',{frame:'thick',vpos:'middle',scale:'l'}),sp('ac','fg','alt',{deco:'burst',scale:'l'})]},
+ {name:"Azul Teacher",pal:{bg:"#ffffff",fg:"#0d0d0d",ac:"#1f4fff",alt:"#1f4fff"},fonts:["Archivo Black","Lora"],slides:[sp('bg','fg','ac',{deco:'asterisk',vpos:'middle',scale:'l',frame:'line'}),sp('alt','bg','bg',{deco:'asterisk',vpos:'middle',scale:'l',frame:'line'}),sp('bg','fg','ac',{deco:'burst',vpos:'middle',align:'center',scale:'l',frame:'line'})]},
+ {name:"Verde Finanças",pal:{bg:"#0e1f14",fg:"#2ee59d",ac:"#2ee59d",alt:"#f4f6f0"},fonts:["Anton","IBM Plex Sans"],slides:[sp('bg','fg','ac',{deco:'grid',scale:'l'}),sp('alt','bg','ac',{vpos:'top'}),sp('ac','bg','bg',{vpos:'middle',align:'center',scale:'l'})]},
+ {name:"Minimalista",pal:{bg:"#f6f5f1",fg:"#111111",ac:"#ff5a2c",alt:"#111111"},fonts:["Inter","Inter"],slides:[sp('bg','fg','ac',{vpos:'middle',frame:'line',scale:'l'}),sp('bg','fg','ac',{vpos:'middle',frame:'line',scale:'l'}),sp('alt','bg','ac',{vpos:'middle',frame:'line',scale:'l'})]}];
 const LOGO_POS=["top-left","top-center","top-right","bottom-left","bottom-center","bottom-right"];
 const LOGO_W={small:12,medium:20,large:30};
 let state = { ...DEFAULTS, projectName:"Meu carrossel", instagramHandle:"seuperfil", format:"carousel", ratio:"4:5", slides:[newSlide(0)] };
@@ -301,41 +348,71 @@ function pushHistory(){ history.push(snapshot()); if(history.length>60) history.
 function undo(){ if(!history.length) return; future.push(snapshot()); const s=history.pop(); state=s.state; activeIndex=s.activeIndex; renderAll(); save(); }
 function redo(){ if(!future.length) return; history.push(snapshot()); const s=future.pop(); state=s.state; activeIndex=s.activeIndex; renderAll(); save(); }
 function save(){ try{ localStorage.setItem('acs_project_v2', JSON.stringify(state)); document.getElementById('savedAt').textContent='Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){} }
-function load(){ try{ const raw=localStorage.getItem('acs_project_v2'); if(raw){ const p=JSON.parse(raw); state={...DEFAULTS,...p,fonts:{...DEFAULTS.fonts,...(p.fonts||{})}}; return true; } }catch(e){} return false; }
+function load(){ try{ const raw=localStorage.getItem('acs_project_v2'); if(raw){ const p=JSON.parse(raw); state={...DEFAULTS,...p,fonts:{...DEFAULTS.fonts,...(p.fonts||{})},pal:{...DEFAULTS.pal,...(p.pal||{})},profile:{...DEFAULTS.profile,...(p.profile||{})}}; state.slides.forEach(x=>{ if(!x.spec){ x.spec={}; if(x.cardStyle==='light'){ x.bgColor='#ffffff'; x.fg='#17171a'; } } }); return true; } }catch(e){} return false; }
 function activeSlide(){ return state.slides[activeIndex]; }
 function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
+const SC={s:.75,m:1,l:1.4}, JV={top:'flex-start',middle:'center',bottom:'flex-end'};
+function col(s,k,P=state.pal){ const key=s.spec&&s.spec[k]; if(key&&P[key]) return P[key]; return k==='bg'?(s.bgColor||P.bg):(s[k]||(k==='fg'?P.fg:P.ac)); }
+function isLight(h){ const n=parseInt((h||'#000').slice(1),16); return (0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255))/255>0.6; }
+function decoSVG(id,c){
+  if(!id||id==='none') return '';
+  const S=(st,vb,inner,ex='')=>`<svg class="deco" style="${st}" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" ${ex}>${inner}</svg>`;
+  const rng=n=>[...Array(n).keys()];
+  return ({
+    asterisk:()=>S('right:-14px;top:52px;width:110px','0 0 100 100',`<g stroke="${c}" stroke-width="15" stroke-linecap="round"><path d="M50 8V92M13.6 29L86.4 71M13.6 71L86.4 29"/></g>`),
+    circle:()=>S('right:-60px;top:-50px;width:200px','0 0 100 100',`<circle cx="50" cy="50" r="50" fill="${c}"/>`),
+    burst:()=>S('right:-30px;bottom:40px;width:150px','0 0 100 100',[0,30,60,90,120,150].map(a=>`<rect x="44" y="0" width="12" height="100" rx="6" fill="${c}" transform="rotate(${a} 50 50)"/>`).join('')),
+    arrow:()=>S('right:18px;bottom:44px;width:70px','0 0 100 100',`<path d="M15 15L85 85M85 30V85H30" fill="none" stroke="${c}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`),
+    grid:()=>S('left:0;top:0;width:100%;height:100%;opacity:.25','0 0 300 375',`<path d="M75 0V375M225 0V375M0 90H300M0 285H300" stroke="${c}" stroke-width="1.5"/>`,'preserveAspectRatio="none"'),
+    stripes:()=>S('left:0;bottom:0;width:130px','0 0 100 100',rng(5).map(k=>`<path d="M0 ${100-(k+1)*18}L${(k+1)*18} 100" stroke="${c}" stroke-width="6"/>`).join('')),
+    dots:()=>S('right:16px;top:52px;width:80px','0 0 100 100',rng(16).map(k=>`<circle cx="${10+(k%4)*27}" cy="${10+Math.floor(k/4)*27}" r="5" fill="${c}"/>`).join('')),
+    corner:()=>S('left:0;bottom:0;width:120px','0 0 100 100',`<path d="M0 100A100 100 0 0 1 100 0V100Z" fill="${c}"/>`)
+  }[id]||(()=>''))();
+}
+function frameHTML(f,fg,ac){ const st={line:`inset:12px;border:1.5px solid ${fg};border-radius:4px`,round:`inset:12px;border:2px solid ${fg};border-radius:22px`,thick:`inset:0;border:9px solid ${ac}`}[f]; return st?`<div class="frame" style="${st}"></div>`:''; }
+function makeCard(s,i,n,editable,ov){
+  const P=ov?.pal||state.pal, F=ov?.fonts||state.fonts, pf=state.profile;
+  const bg=col(s,'bg',P), fg=col(s,'fg',P), ac=col(s,'ac',P), soc=s.layout==='social', ce=editable?' contenteditable="true"':'';
+  const card=document.createElement('div'); card.className='slide-card';
+  card.style.cssText=`--fh:"${F.headline}";--fb:"${F.body}";--fg:${fg};--ac:${ac};background:${bg}`;
+  const av=pf.avatar?`<img class="soc-av" src="${pf.avatar}">`:`<div class="soc-av">${escapeHtml((pf.name||'?')[0])}</div>`;
+  const ver=pf.verified?`<svg width="13" height="13" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1d9bf0"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`:'';
+  const tSize=Math.round((soc?17:23)*SC[s.scale||'m']);
+  card.innerHTML=`
+    ${s.image? `<img class="bgimg" src="${s.image}" crossorigin="anonymous">` : ''}
+    ${s.image&&isLight(fg)? '<div class="overlay"></div>' : ''}
+    ${decoSVG(s.deco,ac)}${frameHTML(s.frame,fg,ac)}
+    ${state.logo? `<img class="logo ${state.logo.pos}" src="${state.logo.url}" style="width:${LOGO_W[state.logo.size]}%;opacity:${state.logo.opacity}">` : ''}
+    ${soc?'':`<div class="num-badge">${i+1}</div>`}
+    ${s.label&&!soc? `<div class="label-badge" style="background:${ac};color:${bg}">${escapeHtml(s.label)}</div>` : ''}
+    <div class="content" style="text-align:${s.align||'left'}">
+      <div class="cbody" style="justify-content:${JV[s.vpos||'bottom']}">
+        ${soc? `<div class="soc-head">${av}<div><div class="soc-name">${escapeHtml(pf.name)}${ver}</div><div class="soc-handle">@${escapeHtml(state.instagramHandle)}</div></div></div>`:''}
+        <p class="card-title"${ce} data-field="title" style="font-size:${tSize}px;font-weight:${s.bold===false?400:(soc?700:900)};text-decoration:${s.underline?'underline':'none'}">${escapeHtml(s.title)}</p>
+        <p class="card-support"${ce} data-field="supportText" style="font-size:${soc?12.5:12.5}px">${escapeHtml(s.supportText)}</p>
+      </div>
+      ${n>1? `<div class="dots">${state.slides.map((_,di)=>`<span class="${di===i?'on':''}"></span>`).join('')}</div>` : ''}
+      <div class="footer-row"><span>${state.instagramHandle? '@'+escapeHtml(state.instagramHandle) : (n>1? String(i+1).padStart(2,'0')+'/'+String(n).padStart(2,'0') : '')}</span>${n>1? '<span>ARRASTA →</span>':''}</div>
+    </div>`;
+  return card;
+}
 function renderFilmstrip(){
   const fs=document.getElementById('filmstrip');
   fs.style.setProperty('--ratio', currentRatioMultiplier());
+  ensureFont(state.fonts.headline); ensureFont(state.fonts.body);
   fs.innerHTML='';
   state.slides.forEach((s,i)=>{
     const outer=document.createElement('div');
     outer.className='slide-card-outer'+(i===activeIndex?' active':'');
     outer.innerHTML=`<div class="index-label">${String(i+1).padStart(2,'0')}/${String(state.slides.length).padStart(2,'0')}</div>`;
-    const card=document.createElement('div');
-    card.className='slide-card '+s.cardStyle;
-    card.style.setProperty('--fh',`"${state.fonts.headline}"`); card.style.setProperty('--fb',`"${state.fonts.body}"`); card.style.setProperty('--ac',state.accent);
-    if(!s.image) card.style.background = s.cardStyle==='light' ? '#ffffff' : s.bgColor;
-    card.innerHTML=`
-      ${s.image? `<img class="bgimg" src="${s.image}" crossorigin="anonymous">` : ''}
-      <div class="overlay"></div>
-      ${state.logo? `<img class="logo ${state.logo.pos}" src="${state.logo.url}" style="width:${LOGO_W[state.logo.size]}%;opacity:${state.logo.opacity}">` : ''}
-      <div class="num-badge">${i+1}</div>
-      ${s.label? `<div class="label-badge">${escapeHtml(s.label)}</div>` : ''}
-      <div class="content">
-        <p class="card-title" contenteditable="true" data-field="title">${escapeHtml(s.title)}</p>
-        <p class="card-support" contenteditable="true" data-field="supportText">${escapeHtml(s.supportText)}</p>
-        ${state.slides.length>1? `<div class="dots">${state.slides.map((_,di)=>`<span class="${di===i?'on':''}"></span>`).join('')}</div>` : ''}
-        <div class="footer-row"><span>${state.instagramHandle? '@'+escapeHtml(state.instagramHandle) : (state.slides.length>1? String(i+1).padStart(2,'0')+'/'+String(state.slides.length).padStart(2,'0') : '')}</span>${state.slides.length>1? '<span>ARRASTA →</span>':''}</div>
-      </div>`;
+    const card=makeCard(s,i,state.slides.length,true);
     card.addEventListener('mousedown',(ev)=>{ if(ev.target.dataset && ev.target.dataset.field) return; selectSlide(i); });
     card.querySelectorAll('[contenteditable]').forEach(el=>{
       el.addEventListener('click',(ev)=>{ ev.stopPropagation(); selectSlide(i); });
       el.addEventListener('blur',()=>{ pushHistory(); s[el.dataset.field]=el.textContent; renderLeftPanel(); save(); });
     });
-    outer.appendChild(card);
-    fs.appendChild(outer);
+    outer.appendChild(card); fs.appendChild(outer);
   });
   if(state.format!=='post'){
     const addOuter=document.createElement('div');
@@ -350,105 +427,123 @@ function selectSlide(i){ activeIndex=i; renderAll(); }
 function addSlide(){ pushHistory(); state.slides.push(newSlide(state.slides.length)); activeIndex=state.slides.length-1; renderAll(); save(); }
 function deleteSlide(){ if(state.slides.length<=1) return; pushHistory(); state.slides.splice(activeIndex,1); activeIndex=Math.max(0,activeIndex-1); renderAll(); save(); }
 
+const chips=(a,o,c)=>o.map(([v,l])=>`<div class="chip ${c===v?'active':''}" data-${a}="${v}">${l}</div>`).join('');
+const colorRow=(id,l,v)=>`<div class="field"><label>${l}</label><div class="color-row"><input type="color" id="${id}" value="${v}"><input type="text" id="${id}Hex" value="${v}"></div></div>`;
 function renderLeftPanel(){
-  const s=activeSlide();
-  const lp=document.getElementById('leftpanel');
+  const s=activeSlide(), lp=document.getElementById('leftpanel'), L=state.logo, P=state.pal, pf=state.profile;
+  const fmt=(k,t,on)=>`<button data-fmt="${k}" title="${t}" class="${on?'on':''}">${{bold:'<b>B</b>',underline:'<u>U</u>',left:'⯇',center:'≡',right:'⯈',justify:'☰'}[k]}</button>`;
   lp.innerHTML=`
     <h1>Editar slide (${activeIndex+1})</h1>
     <div class="desc">Clique num texto na prévia pra editar, arraste pra navegar. Tudo muda na hora.</div>
-    <div class="section" data-section="conteudo">
-      <div class="section-head"><span class="dot"></span> Conteúdo do slide <span class="chev">▾</span></div>
+    <div class="section"><div class="section-head"><span class="dot"></span> Conteúdo do slide <span class="chev">▾</span></div>
       <div class="section-body">
-        <div class="toolbar-row">
-          <button title="Negrito"><b>B</b></button>
-          <button title="Sublinhado"><u>U</u></button>
-          <button title="Alinhar esquerda">⯇</button>
-          <button title="Centralizar">≡</button>
-          <button title="Alinhar direita">⯈</button>
-        </div>
+        <div class="toolbar-row">${fmt('bold','Negrito',s.bold!==false)}${fmt('underline','Sublinhado',s.underline)}${fmt('left','Esquerda',s.align==='left'||!s.align)}${fmt('center','Centralizar',s.align==='center')}${fmt('right','Direita',s.align==='right')}${fmt('justify','Justificar',s.align==='justify')}</div>
         <div class="field"><label>Título</label><input type="text" id="f-title" value="${escapeHtml(s.title)}"></div>
         <div class="field"><label>Texto de apoio</label><textarea id="f-support">${escapeHtml(s.supportText)}</textarea></div>
         <div class="field"><label>Etiqueta (canto superior, vazio = sem etiqueta)</label><input type="text" id="f-label" value="${escapeHtml(s.label)}"></div>
         <div class="field"><label>@ do Instagram (todos os cards, vazio = sem @)</label><input type="text" id="f-handle" value="${escapeHtml(state.instagramHandle)}"></div>
-      </div>
-    </div>
-    <div class="section" data-section="visual">
-      <div class="section-head"><span class="dot"></span> Visual do card <span class="chev">▾</span></div>
+      </div></div>
+    <div class="section"><div class="section-head"><span class="dot"></span> Layout e decoração <span class="chev">▾</span></div>
       <div class="section-body">
-        <div class="field"><label>Estilo</label><div class="chip-row">
-          <div class="chip ${s.cardStyle==='dark'?'active':''}" data-style="dark">Escuro</div>
-          <div class="chip ${s.cardStyle==='light'?'active':''}" data-style="light">Claro</div>
-        </div></div>
+        <div class="field"><label>Layout</label><div class="chip-row">${chips('layout',[['default','Padrão'],['social','Rede social']],s.layout||'default')}</div></div>
+        <div class="field"><label>Posição vertical do texto</label><div class="chip-row">${chips('vpos',[['top','Topo'],['middle','Meio'],['bottom','Base']],s.vpos||'bottom')}</div></div>
+        <div class="field"><label>Tamanho do título</label><div class="chip-row">${chips('scale',[['s','Pequeno'],['m','Médio'],['l','Grande']],s.scale||'m')}</div></div>
+        <div class="field"><label>Forma / elemento visual</label><div class="chip-row">${chips('deco',[['none','Nenhum'],['asterisk','Asterisco'],['circle','Círculo'],['burst','Explosão'],['arrow','Seta'],['grid','Grade'],['stripes','Listras'],['dots','Pontos'],['corner','Canto']],s.deco||'none')}</div></div>
+        <div class="field"><label>Borda</label><div class="chip-row">${chips('frame',[['none','Nenhuma'],['line','Linha'],['round','Arredondada'],['thick','Grossa']],s.frame||'none')}</div></div>
+        <button class="btn-flat" id="a-all" style="width:100%">Aplicar este layout a todos os slides</button>
+      </div></div>
+    <div class="section"><div class="section-head"><span class="dot"></span> Visual do card <span class="chev">▾</span></div>
+      <div class="section-body">
+        ${colorRow('f-sbg','Cor de fundo',col(s,'bg'))}${colorRow('f-sfg','Cor do texto',col(s,'fg'))}${colorRow('f-sac','Cor de destaque',col(s,'ac'))}
         <div class="field"><label>Imagem de fundo</label><div class="upload-box" id="uploadImg">${s.image? 'Trocar imagem' : '+ Enviar imagem'}</div></div>
-        ${!s.image? `<div class="field"><label>Cor de fundo (sem imagem)</label><div class="color-row"><input type="color" id="f-bgcolor" value="${s.bgColor}"><input type="text" id="f-bgcolorHex" value="${s.bgColor}"></div></div>` : `<div class="field"><button class="btn-flat" id="removeImg" style="width:100%">Remover imagem</button></div>`}
-      </div>
-    </div>
-    <div class="section" data-section="marca">
-      <div class="section-head"><span class="dot"></span> Templates, cores e fontes (todos os slides) <span class="chev">▾</span></div>
+        ${s.image? `<button class="btn-flat" id="removeImg" style="width:100%">Remover imagem</button>`:''}
+      </div></div>
+    <div class="section"><div class="section-head"><span class="dot"></span> Templates, cores e fontes (todos os slides) <span class="chev">▾</span></div>
       <div class="section-body">
-        <div class="field"><label>Template</label><div class="chip-row">${Object.keys(TEMPLATES).map(k=>`<div class="chip" data-tpl="${k}">${k}</div>`).join('')}</div></div>
-        <div class="field"><label>Cor de destaque</label><div class="color-row"><input type="color" id="f-accent" value="${state.accent}"><input type="text" id="f-accentHex" value="${state.accent}"></div></div>
-        <div class="row2">
-          <div class="field"><label>Fonte do título</label><select id="f-fh">${FONTS_H.map(f=>`<option ${f===state.fonts.headline?'selected':''}>${f}</option>`).join('')}</select></div>
-          <div class="field"><label>Fonte do texto</label><select id="f-fb">${FONTS_B.map(f=>`<option ${f===state.fonts.body?'selected':''}>${f}</option>`).join('')}</select></div>
-        </div>
-      </div>
-    </div>
-    <div class="section" data-section="logo">
-      <div class="section-head"><span class="dot"></span> Logo <span class="chev">▾</span></div>
+        <button class="btn-primary" id="openTpl" style="width:100%;margin-bottom:14px">🎨 Escolher template (com prévia)</button>
+        ${colorRow('f-pbg','Fundo',P.bg)}${colorRow('f-pfg','Texto (primária)',P.fg)}${colorRow('f-pac','Destaque (secundária)',P.ac)}${colorRow('f-palt','Fundo alternativo',P.alt)}
+        <div class="row2"><div class="field"><label>Fonte do título</label><select id="f-fh">${fontOpts(state.fonts.headline)}</select></div><div class="field"><label>Fonte do texto</label><select id="f-fb">${fontOpts(state.fonts.body)}</select></div></div>
+        <div class="field"><label>Outra fonte do Google Fonts (nome exato, aplica ao título)</label><input type="text" id="f-custom" placeholder="Ex: Barlow Condensed"></div>
+      </div></div>
+    <div class="section collapsed"><div class="section-head"><span class="dot"></span> Perfil (layout Rede social) <span class="chev">▾</span></div>
       <div class="section-body">
-        <div class="field"><div class="upload-box" id="uploadLogo">${state.logo? 'Trocar logo' : '+ Enviar logo (PNG transparente é o ideal)'}</div></div>
-        ${state.logo? `
-        <div class="field"><label>Posição</label><div class="chip-row">${LOGO_POS.map(p=>`<div class="chip ${state.logo.pos===p?'active':''}" data-lpos="${p}">${p.replace('top','topo').replace('bottom','base').replace('left','esq.').replace('right','dir.').replace('center','centro').replace('-',' ')}</div>`).join('')}</div></div>
-        <div class="field"><label>Tamanho</label><div class="chip-row">${['small','medium','large'].map(z=>`<div class="chip ${state.logo.size===z?'active':''}" data-lsize="${z}">${{small:'Pequeno',medium:'Médio',large:'Grande'}[z]}</div>`).join('')}</div></div>
-        <div class="field"><label>Opacidade (${Math.round(state.logo.opacity*100)}%)</label><input type="range" id="f-logoop" min="10" max="100" value="${Math.round(state.logo.opacity*100)}"></div>
+        <div class="field"><label>Nome</label><input type="text" id="f-pname" value="${escapeHtml(pf.name)}"></div>
+        <div class="field"><label><input type="checkbox" id="f-pver" ${pf.verified?'checked':''}> Selo de verificado</label></div>
+        <div class="field"><div class="upload-box" id="uploadAvatar">${pf.avatar?'Trocar foto':'+ Foto de perfil'}</div></div>
+      </div></div>
+    <div class="section collapsed"><div class="section-head"><span class="dot"></span> Logo <span class="chev">▾</span></div>
+      <div class="section-body">
+        <div class="field"><div class="upload-box" id="uploadLogo">${L? 'Trocar logo' : '+ Enviar logo (PNG transparente é o ideal)'}</div></div>
+        ${L? `
+        <div class="field"><label>Posição</label><div class="chip-row">${LOGO_POS.map(p=>`<div class="chip ${L.pos===p?'active':''}" data-lpos="${p}">${p.replace('top','topo').replace('bottom','base').replace('left','esq.').replace('right','dir.').replace('center','centro').replace('-',' ')}</div>`).join('')}</div></div>
+        <div class="field"><label>Tamanho</label><div class="chip-row">${chips('lsize',[['small','Pequeno'],['medium','Médio'],['large','Grande']],L.size)}</div></div>
+        <div class="field"><label>Opacidade (${Math.round(L.opacity*100)}%)</label><input type="range" id="f-logoop" min="10" max="100" value="${Math.round(L.opacity*100)}"></div>
         <button class="btn-flat" id="removeLogo" style="width:100%">Remover logo</button>` : ''}
-      </div>
-    </div>
-    <div class="section" data-section="acoes">
-      <div class="section-head"><span class="dot"></span> Ações do slide <span class="chev">▾</span></div>
+      </div></div>
+    <div class="section"><div class="section-head"><span class="dot"></span> Ações do slide <span class="chev">▾</span></div>
       <div class="section-body">
         <div class="slide-actions" style="margin-bottom:8px"><button id="a-regen" style="background:var(--ink);color:#fff">✨ Regenerar este slide com IA</button></div>
         <div class="slide-actions"><button id="a-dup">Duplicar</button><button id="a-up">Mover ↑</button><button id="a-down">Mover ↓</button></div>
         <div class="slide-actions" style="margin-top:8px"><button id="a-del" class="danger" style="width:100%">Excluir slide</button></div>
-      </div>
-    </div>`;
+      </div></div>`;
   bindLeftPanel(s);
   document.getElementById('statusProjectName').textContent=state.projectName;
 }
 function bindLeftPanel(s){
-  document.querySelectorAll('.section-head').forEach(h=>{ h.onclick=()=>h.parentElement.classList.toggle('collapsed'); });
-  const t=document.getElementById('f-title'); t.oninput=()=>{ s.title=t.value; renderFilmstrip(); }; t.onblur=()=>{ pushHistory(); save(); };
-  const sp=document.getElementById('f-support'); sp.oninput=()=>{ s.supportText=sp.value; renderFilmstrip(); }; sp.onblur=()=>{ pushHistory(); save(); };
-  const lb=document.getElementById('f-label'); lb.oninput=()=>{ s.label=lb.value; renderFilmstrip(); }; lb.onblur=()=>{ pushHistory(); save(); };
-  const hd=document.getElementById('f-handle'); hd.onchange=()=>{ pushHistory(); state.instagramHandle=hd.value; save(); };
-  document.querySelectorAll('[data-style]').forEach(chip=>{ chip.onclick=()=>{ pushHistory(); s.cardStyle=chip.dataset.style; renderAll(); save(); }; });
-  const upl=document.getElementById('uploadImg'); if(upl) upl.onclick=()=>document.getElementById('fileInput').click();
-  const rem=document.getElementById('removeImg'); if(rem) rem.onclick=()=>{ pushHistory(); s.image=null; renderAll(); save(); };
-  const bg=document.getElementById('f-bgcolor'), bgh=document.getElementById('f-bgcolorHex');
-  if(bg){ bg.oninput=()=>{ bgh.value=bg.value; s.bgColor=bg.value; renderFilmstrip(); }; bg.onchange=()=>{ pushHistory(); save(); }; }
-  if(bgh){ bgh.onchange=()=>{ pushHistory(); s.bgColor=bgh.value; renderAll(); save(); }; }
-  document.getElementById('a-dup').onclick=()=>{ pushHistory(); const c=JSON.parse(JSON.stringify(s)); c.id=uid(); state.slides.splice(activeIndex+1,0,c); activeIndex++; renderAll(); save(); };
-  document.getElementById('a-up').onclick=()=>{ if(activeIndex===0) return; pushHistory(); [state.slides[activeIndex-1],state.slides[activeIndex]]=[state.slides[activeIndex],state.slides[activeIndex-1]]; activeIndex--; renderAll(); save(); };
-  document.getElementById('a-down').onclick=()=>{ if(activeIndex===state.slides.length-1) return; pushHistory(); [state.slides[activeIndex+1],state.slides[activeIndex]]=[state.slides[activeIndex],state.slides[activeIndex+1]]; activeIndex++; renderAll(); save(); };
-  document.getElementById('a-del').onclick=deleteSlide;
-  document.getElementById('a-regen').onclick=regenSlide;
-  document.querySelectorAll('[data-tpl]').forEach(c=>c.onclick=()=>applyTemplate(c.dataset.tpl));
-  const ac=document.getElementById('f-accent'), ach=document.getElementById('f-accentHex');
-  ac.oninput=()=>{ ach.value=ac.value; state.accent=ac.value; renderFilmstrip(); }; ac.onchange=()=>{ pushHistory(); save(); };
-  ach.onchange=()=>{ if(/^#[0-9a-f]{6}$/i.test(ach.value)){ pushHistory(); state.accent=ach.value; renderAll(); save(); } };
-  document.getElementById('f-fh').onchange=e=>{ pushHistory(); state.fonts.headline=e.target.value; renderAll(); save(); };
-  document.getElementById('f-fb').onchange=e=>{ pushHistory(); state.fonts.body=e.target.value; renderAll(); save(); };
-  document.getElementById('uploadLogo').onclick=()=>document.getElementById('logoFileInput').click();
-  document.querySelectorAll('[data-lpos]').forEach(c=>c.onclick=()=>{ pushHistory(); state.logo.pos=c.dataset.lpos; renderAll(); save(); });
-  document.querySelectorAll('[data-lsize]').forEach(c=>c.onclick=()=>{ pushHistory(); state.logo.size=c.dataset.lsize; renderAll(); save(); });
-  const lo=document.getElementById('f-logoop'); if(lo){ lo.oninput=()=>{ state.logo.opacity=lo.value/100; renderFilmstrip(); lo.previousElementSibling.textContent=`Opacidade (${lo.value}%)`; }; lo.onchange=()=>{ pushHistory(); save(); }; }
-  const rl=document.getElementById('removeLogo'); if(rl) rl.onclick=()=>{ pushHistory(); state.logo=null; renderAll(); save(); };
+  const q=x=>document.getElementById(x), $$=(sel,fn)=>document.querySelectorAll(sel).forEach(fn);
+  const commit=fn=>{ pushHistory(); fn(); renderAll(); save(); };
+  const bindColor=(id,set)=>{ const c=q(id),h=q(id+'Hex'); c.oninput=()=>{ h.value=c.value; set(c.value); renderFilmstrip(); }; c.onchange=()=>{ pushHistory(); save(); }; h.onchange=()=>{ if(/^#[0-9a-f]{6}$/i.test(h.value)) commit(()=>set(h.value)); }; };
+  $$('.section-head',h=>h.onclick=()=>h.parentElement.classList.toggle('collapsed'));
+  const t=q('f-title'); t.oninput=()=>{ s.title=t.value; renderFilmstrip(); }; t.onblur=()=>{ pushHistory(); save(); };
+  const sp2=q('f-support'); sp2.oninput=()=>{ s.supportText=sp2.value; renderFilmstrip(); }; sp2.onblur=()=>{ pushHistory(); save(); };
+  const lb=q('f-label'); lb.oninput=()=>{ s.label=lb.value; renderFilmstrip(); }; lb.onblur=()=>{ pushHistory(); save(); };
+  q('f-handle').onchange=e=>{ pushHistory(); state.instagramHandle=e.target.value; renderFilmstrip(); save(); };
+  $$('[data-fmt]',b=>b.onclick=()=>commit(()=>{ const f=b.dataset.fmt; if(f==='bold') s.bold=s.bold===false; else if(f==='underline') s.underline=!s.underline; else s.align=f; }));
+  ['layout','vpos','scale','deco','frame'].forEach(k=>$$(`[data-${k}]`,c=>c.onclick=()=>commit(()=>{ s[k]=c.dataset[k]; })));
+  q('a-all').onclick=()=>commit(()=>state.slides.forEach(x=>['layout','vpos','scale','deco','frame','align'].forEach(k=>x[k]=s[k])));
+  const own=k=>v=>{ s.spec={...(s.spec||{})}; delete s.spec[k]; if(k==='bg') s.bgColor=v; else s[k]=v; };
+  bindColor('f-sbg',own('bg')); bindColor('f-sfg',own('fg')); bindColor('f-sac',own('ac'));
+  ['bg','fg','ac','alt'].forEach(k=>bindColor('f-p'+k,v=>{ state.pal[k]=v; }));
+  q('uploadImg').onclick=()=>q('fileInput').click();
+  const rem=q('removeImg'); if(rem) rem.onclick=()=>commit(()=>{ s.image=null; });
+  q('openTpl').onclick=openTplGallery;
+  q('f-fh').onchange=e=>commit(()=>{ state.fonts.headline=e.target.value; });
+  q('f-fb').onchange=e=>commit(()=>{ state.fonts.body=e.target.value; });
+  q('f-custom').onchange=e=>{ const n=e.target.value.trim(); if(n) commit(()=>{ state.fonts.headline=n; }); };
+  q('f-pname').onchange=e=>commit(()=>{ state.profile.name=e.target.value; });
+  q('f-pver').onchange=e=>commit(()=>{ state.profile.verified=e.target.checked; });
+  q('uploadAvatar').onclick=()=>q('avatarFileInput').click();
+  q('uploadLogo').onclick=()=>q('logoFileInput').click();
+  $$('[data-lpos]',c=>c.onclick=()=>commit(()=>{ state.logo.pos=c.dataset.lpos; }));
+  $$('[data-lsize]',c=>c.onclick=()=>commit(()=>{ state.logo.size=c.dataset.lsize; }));
+  const lo=q('f-logoop'); if(lo){ lo.oninput=()=>{ state.logo.opacity=lo.value/100; renderFilmstrip(); lo.previousElementSibling.textContent=`Opacidade (${lo.value}%)`; }; lo.onchange=()=>{ pushHistory(); save(); }; }
+  const rl=q('removeLogo'); if(rl) rl.onclick=()=>commit(()=>{ state.logo=null; });
+  q('a-dup').onclick=()=>commit(()=>{ const c=JSON.parse(JSON.stringify(s)); c.id=uid(); state.slides.splice(activeIndex+1,0,c); activeIndex++; });
+  q('a-up').onclick=()=>{ if(activeIndex===0) return; commit(()=>{ [state.slides[activeIndex-1],state.slides[activeIndex]]=[state.slides[activeIndex],state.slides[activeIndex-1]]; activeIndex--; }); };
+  q('a-down').onclick=()=>{ if(activeIndex===state.slides.length-1) return; commit(()=>{ [state.slides[activeIndex+1],state.slides[activeIndex]]=[state.slides[activeIndex],state.slides[activeIndex+1]]; activeIndex++; }); };
+  q('a-del').onclick=deleteSlide; q('a-regen').onclick=regenSlide;
 }
-function applyTemplate(name){
-  const t=TEMPLATES[name]; pushHistory();
-  state.slides.forEach(s=>{ s.cardStyle=t.cardStyle; s.bgColor=t.bg; });
-  state.accent=t.accent; state.fonts={headline:t.fh,body:t.fb}; renderAll(); save();
+/* ---- templates ---- */
+function applyTemplateTo(sl,t){ sl.forEach((s,i)=>{ const n=sl.length, r=t.slides[i===0?0:(i===n-1?2:1)]; s.spec={bg:r.bg,fg:r.fg,ac:r.ac}; ['align','vpos','scale','deco','frame','layout'].forEach(k=>s[k]=r[k]); delete s.fg; delete s.ac; s.bgColor=t.pal[r.bg]; }); }
+function applyTemplate(idx){ const t=TEMPLATES[idx]; pushHistory(); state.pal={...t.pal}; state.fonts={headline:t.fonts[0],body:t.fonts[1]}; applyTemplateTo(state.slides,t); state.tplName=t.name; renderAll(); save(); }
+const tplFonts=t=>({headline:t.fonts[0],body:t.fonts[1]});
+function tplSlides(t){ const src=state.slides; const sl=[0,1,2].map(k=>{ const c=JSON.parse(JSON.stringify(src[k%src.length])); c.image=null; c.label=k===0?c.label:''; return c; }); applyTemplateTo(sl,t); return sl; }
+function miniCard(s,i,t,w){ const k=w/300, h=300*currentRatioMultiplier(); const wrap=document.createElement('div'); wrap.style.cssText=`width:${w}px;height:${h*k}px;overflow:hidden;border-radius:${Math.max(4,22*k)}px;flex:none`;
+  const c=makeCard(s,i,3,false,{pal:t.pal,fonts:tplFonts(t)}); c.style.width='300px'; c.style.height=h+'px'; c.style.boxShadow='none'; c.style.transform=`scale(${k})`; c.style.transformOrigin='top left'; wrap.appendChild(c); return wrap; }
+let tplIdx=0, tplSlideIdx=0;
+const showTpl=v=>{ document.getElementById('tplGridView').style.display=v==='grid'?'block':'none'; document.getElementById('tplPrevView').style.display=v==='grid'?'none':'block'; };
+function openTplGallery(){
+  TEMPLATES.forEach(t=>t.fonts.forEach(ensureFont));
+  const g=document.getElementById('tplGrid'); g.innerHTML='';
+  TEMPLATES.forEach((t,i)=>{ const it=document.createElement('div'); it.className='tpl-item'; const m=document.createElement('div'); m.className='mini'; m.appendChild(miniCard(tplSlides(t)[0],0,t,160)); it.appendChild(m); it.appendChild(document.createTextNode(t.name)); it.onclick=()=>{ tplIdx=i; tplSlideIdx=0; renderTplPreview(); }; g.appendChild(it); });
+  showTpl('grid'); document.getElementById('tplModal').classList.add('open');
+}
+function renderTplPreview(){
+  const t=TEMPLATES[tplIdx], sl=tplSlides(t); showTpl('prev');
+  document.getElementById('tplName').textContent=t.name;
+  const big=document.getElementById('tplBig'); big.innerHTML=''; big.appendChild(miniCard(sl[tplSlideIdx],tplSlideIdx,t,300));
+  const th=document.getElementById('tplThumbs'); th.innerHTML='';
+  sl.forEach((x,i)=>{ const d=document.createElement('div'); if(i===tplSlideIdx) d.className='on'; d.appendChild(miniCard(x,i,t,56)); d.onclick=()=>{ tplSlideIdx=i; renderTplPreview(); }; th.appendChild(d); });
 }
 function downscale(dataUrl,max){ return new Promise(res=>{ const i=new Image(); i.onload=()=>{ const k=Math.min(1,max/Math.max(i.width,i.height)); const c=document.createElement('canvas'); c.width=Math.round(i.width*k); c.height=Math.round(i.height*k); c.getContext('2d').drawImage(i,0,0,c.width,c.height); res(c.toDataURL('image/png')); }; i.onerror=()=>res(dataUrl); i.src=dataUrl; }); }
 document.getElementById('logoFileInput').addEventListener('change',(ev)=>{
@@ -513,93 +608,25 @@ function updateCounters(){
   document.querySelector('.drag-hint').style.display = state.slides.length>1? 'block':'none';
 }
 
-function loadImage(src){ return new Promise(res=>{ const i=new Image(); if(!src.startsWith('data:')) i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src; }); }
-function wrapText(ctx,text,maxWidth){
-  const words=text.split(' '); let lines=[]; let line='';
-  words.forEach(w=>{ const test=line? line+' '+w : w; if(ctx.measureText(test).width>maxWidth && line){ lines.push(line); line=w; } else line=test; });
-  if(line) lines.push(line);
-  return lines;
-}
-function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-async function renderSlideToCanvas(s,index,total,width){
-  const W=width, H=Math.round(width*currentRatioMultiplier());
-  const FH=`"${state.fonts.headline}", Inter, sans-serif`, FB=`"${state.fonts.body}", Inter, sans-serif`;
-  try{ await Promise.all([document.fonts.load(`900 40px ${FH}`),document.fonts.load(`400 40px ${FB}`)]); }catch(e){}
-  const c=document.createElement('canvas'); c.width=W; c.height=H;
-  const ctx=c.getContext('2d');
-  const isLight = s.cardStyle==='light';
-  ctx.fillStyle = isLight? '#ffffff' : s.bgColor;
-  ctx.fillRect(0,0,W,H);
-  if(s.image){
-    const img=await loadImage(s.image);
-    if(img){
-      const ir=img.width/img.height, br=W/H;
-      let sx=0,sy=0,sw=img.width,sh=img.height;
-      if(ir>br){ sw=img.height*br; sx=(img.width-sw)/2; } else { sh=img.width/br; sy=(img.height-sh)/2; }
-      ctx.drawImage(img,sx,sy,sw,sh,0,0,W,H);
-    }
-    if(!isLight){
-      const grad=ctx.createLinearGradient(0,0,0,H);
-      grad.addColorStop(0,'rgba(0,0,0,.15)'); grad.addColorStop(0.4,'rgba(0,0,0,.1)'); grad.addColorStop(1,'rgba(0,0,0,.75)');
-      ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
-    }
-  }
-  const badgeR=W*0.028;
-  ctx.beginPath(); ctx.arc(W*0.07,H*0.045,badgeR,0,Math.PI*2);
-  ctx.fillStyle = isLight? '#f1f1ee' : 'rgba(255,255,255,.9)'; ctx.fill();
-  ctx.fillStyle='#17171a'; ctx.font=`800 ${Math.round(W*0.028)}px Inter`; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(String(index+1), W*0.07, H*0.047);
-  if(s.label){
-    ctx.font=`800 ${Math.round(W*0.022)}px Inter`;
-    const tw=ctx.measureText(s.label).width;
-    const padX=W*0.025, bx=W-tw-padX*2-W*0.05, by=H*0.025, bw=tw+padX*2, bh=H*0.038;
-    ctx.fillStyle='#fff1ea'; roundRect(ctx,bx,by,bw,bh,bh/2); ctx.fill();
-    ctx.fillStyle='#c2410c'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(s.label, bx+bw/2, by+bh/2+1);
-  }
-  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  const padX=W*0.065; const maxW=W-padX*2;
-  ctx.fillStyle = isLight? '#17171a' : '#ffffff';
-  ctx.font=`900 ${Math.round(W*0.068)}px ${FH}`;
-  const titleLines=wrapText(ctx,s.title,maxW);
-  const lineH=W*0.078;
-  let curY = H - H*0.16 - (titleLines.length*lineH) - (s.supportText? H*0.085:0);
-  titleLines.forEach(line=>{ ctx.fillText(line,padX,curY); curY+=lineH; });
-  if(s.supportText){
-    ctx.fillStyle = isLight? '#84848c' : 'rgba(255,255,255,.88)';
-    ctx.font=`400 ${Math.round(W*0.037)}px ${FB}`;
-    const supLines=wrapText(ctx,s.supportText,maxW);
-    let sy=curY+H*0.012;
-    supLines.slice(0,3).forEach(line=>{ ctx.fillText(line,padX,sy); sy+=W*0.05; });
-  }
-  const dotY=H-H*0.075, dotR=W*0.008, gap=W*0.018;
-  let dx=padX;
-  for(let i=0;i<total;i++){
-    const on=i===index;
-    ctx.fillStyle = on? state.accent : (isLight? '#e6e6e2':'rgba(255,255,255,.35)');
-    if(on){ roundRect(ctx,dx,dotY-dotR,dotR*3.2,dotR*2,dotR); ctx.fill(); dx+=dotR*3.2+gap; }
-    else { ctx.beginPath(); ctx.arc(dx+dotR,dotY,dotR,0,Math.PI*2); ctx.fill(); dx+=dotR*2+gap; }
-  }
-  ctx.font=`700 ${Math.round(W*0.02)}px Inter`;
-  ctx.fillStyle = isLight? '#84848c':'rgba(255,255,255,.6)';
-  ctx.textAlign='left'; ctx.fillText(`${String(index+1).padStart(2,'0')}/${String(total).padStart(2,'0')}`, padX, H-H*0.025);
-  ctx.textAlign='right'; ctx.fillText('ARRASTA →', W-padX, H-H*0.025);
-  if(state.logo){
-    const li=await loadImage(state.logo.url);
-    if(li){
-      const w=W*LOGO_W[state.logo.size]/100, h=w*li.height/li.width, m=W*16/300, pos=state.logo.pos;
-      const x=pos.endsWith('left')? m : pos.endsWith('right')? W-m-w : (W-w)/2;
-      const y=pos.startsWith('top')? (pos==='top-center'? W*14/300 : W*50/300) : H-W*14/300-h;
-      ctx.globalAlpha=state.logo.opacity; ctx.drawImage(li,x,y,w,h); ctx.globalAlpha=1;
-    }
-  }
-  return c;
-}
 async function exportSlide(s,i,total){
-  const width=parseInt(document.getElementById('exportSize').value);
-  const canvas=await renderSlideToCanvas(s,i,total,width);
-  const a=document.createElement('a'); a.download=`slide-${String(i+1).padStart(2,'0')}.png`; a.href=canvas.toDataURL('image/png'); a.click();
+  if(!window.html2canvas){ alert('A biblioteca de exportação (html2canvas) não carregou. Verifique sua conexão e recarregue.'); return; }
+  const size=parseInt(document.getElementById('exportSize').value);
+  const host=document.createElement('div'); host.style.cssText='position:fixed;left:-10000px;top:0';
+  const card=makeCard(s,i,total,false); card.style.cssText+=`;width:300px;height:${300*currentRatioMultiplier()}px;border-radius:0;box-shadow:none`;
+  host.appendChild(card); document.body.appendChild(host);
+  try{
+    if(document.fonts){ await Promise.all([document.fonts.load(`900 40px "${state.fonts.headline}"`),document.fonts.load(`400 40px "${state.fonts.body}"`)]); await document.fonts.ready; }
+    const c=await html2canvas(card,{scale:size/300,useCORS:true,backgroundColor:null,logging:false});
+    const a=document.createElement('a'); a.download=`slide-${String(i+1).padStart(2,'0')}.png`; a.href=c.toDataURL('image/png'); a.click();
+  }catch(e){ alert('Falha ao exportar: '+e.message); } finally{ host.remove(); }
 }
+document.getElementById('btnTemplates').onclick=openTplGallery;
+document.getElementById('tplBack').onclick=openTplGallery;
+document.getElementById('tplPrev').onclick=()=>{ tplSlideIdx=(tplSlideIdx+2)%3; renderTplPreview(); };
+document.getElementById('tplNext').onclick=()=>{ tplSlideIdx=(tplSlideIdx+1)%3; renderTplPreview(); };
+document.getElementById('tplUse').onclick=()=>{ applyTemplate(tplIdx); document.getElementById('tplModal').classList.remove('open'); };
+document.getElementById('tplModal').addEventListener('mousedown',e=>{ if(e.target.id==='tplModal') e.currentTarget.classList.remove('open'); });
+document.getElementById('avatarFileInput').addEventListener('change',ev=>{ const f=ev.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=async()=>{ const u=await downscale(r.result,200); pushHistory(); state.profile.avatar=u; renderAll(); save(); }; r.readAsDataURL(f); ev.target.value=''; });
 document.getElementById('btnDownloadOne').onclick=()=>exportSlide(activeSlide(),activeIndex,state.slides.length);
 document.getElementById('btnDownloadAll').onclick=async ()=>{ for(let i=0;i<state.slides.length;i++){ await exportSlide(state.slides[i],i,state.slides.length); await new Promise(r=>setTimeout(r,150)); } };
 document.getElementById('btnPreview').onclick=()=>exportSlide(activeSlide(),activeIndex,state.slides.length);
@@ -616,7 +643,11 @@ function initAIPanel(){
     chip.onclick=()=>{ selectedStyle = selectedStyle===st? null: st; chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); if(selectedStyle) chip.classList.add('active'); };
     chips.appendChild(chip);
   });
+  const tsel=document.getElementById('aiTpl'); tsel.innerHTML='<option value="">Manter o visual atual</option>'+TEMPLATES.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
+  tsel.onchange=()=>{ if(tsel.value==='') return; const t=TEMPLATES[tsel.value]; ['bg','fg','ac','alt'].forEach(k=>document.getElementById('aiC-'+k).value=t.pal[k]); document.getElementById('aiFh').innerHTML=fontOpts(t.fonts[0]); document.getElementById('aiFb').innerHTML=fontOpts(t.fonts[1]); };
   document.getElementById('btnOpenAI').onclick=()=>{
+    ['bg','fg','ac','alt'].forEach(k=>document.getElementById('aiC-'+k).value=state.pal[k]); tsel.value='';
+    document.getElementById('aiFh').innerHTML=fontOpts(state.fonts.headline); document.getElementById('aiFb').innerHTML=fontOpts(state.fonts.body);
     const countField = document.getElementById('aiSlideCount');
     const titleEl = document.getElementById('aiModalTitle');
     if(state.format==='post'){ countField.value='1'; countField.disabled=true; titleEl.textContent='Gerar post com IA'; }
@@ -669,7 +700,10 @@ async function runAIGeneration(){
       format: state.format }; // post = 1 slide autoexplicativo; story = frames curtos e diretos; carousel = sequência com hook/cta
     const res2=await fetch('/api/generate-copy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data2=await res2.json(); if(!res2.ok) throw new Error(data2.error||'Falha ao gerar roteiro');
-    buildSlidesFromScript(data2.script, autoImages? [] : refImages);
+    const tpl=document.getElementById('aiTpl').value;
+    ['bg','fg','ac','alt'].forEach(k=>state.pal[k]=document.getElementById('aiC-'+k).value);
+    state.fonts={headline:document.getElementById('aiFh').value,body:document.getElementById('aiFb').value};
+    buildSlidesFromScript(data2.script, autoImages? [] : refImages, tpl!==''?TEMPLATES[tpl]:null);
     state.ctx={theme,tone:payload.tone,audience:payload.audience,autoImages}; save();
     let msg=`Roteiro gerado com sucesso (via ${data2.providerUsed}).`;
     if(data2.script.warnings?.length) msg+=' Avisos: '+data2.script.warnings.join(' | ');
@@ -682,7 +716,7 @@ async function runAIGeneration(){
     setTimeout(()=>{ document.getElementById('aiModal').classList.remove('open'); setAIStatus(''); },1400);
   }catch(err){ setAIStatus('Erro: '+err.message,'error'); } finally{ genBtn.disabled=false; }
 }
-function buildSlidesFromScript(script, references){
+function buildSlidesFromScript(script, references, tpl){
   pushHistory();
   let scriptSlides=script.slides||[];
   if(state.format==='post') scriptSlides=scriptSlides.slice(0,1);
@@ -692,9 +726,10 @@ function buildSlidesFromScript(script, references){
     s.supportText=sd.subtitle||sd.body||s.supportText;
     s.label = sd.role==='hook' ? 'HOOK' : (sd.role==='cta' ? 'SALVE' : '');
     if(references && references.length) s.image=references[idx % references.length];
-    s.cardStyle=state.slides[0]?.cardStyle||'dark'; s.bgColor=state.slides[0]?.bgColor||s.bgColor;
+    const b=state.slides[0]; if(b) ['spec','bgColor','fg','ac','align','vpos','scale','deco','frame','layout'].forEach(k=>{ if(b[k]!==undefined) s[k]=JSON.parse(JSON.stringify(b[k])); });
     return s;
   });
+  if(tpl){ applyTemplateTo(newSlides,tpl); state.tplName=tpl.name; }
   if(newSlides.length){ state.slides=newSlides; activeIndex=0; }
   renderAll(); save();
 }
