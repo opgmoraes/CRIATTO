@@ -1,44 +1,13 @@
-CRIATTO — CONTROLE DO TEXTO E DOS DESTAQUES DA IA
+CRIATTO — estilos inspirados nas referências
 
-Esta atualização já contém as correções de inicialização, ícones, camadas e exportação da versão anterior.
+Copie as pastas deste pacote sobre seu projeto CRIATTO, mantendo seu .env.local. Não há dependências novas. Reinicie o app com npm run dev (ou faça npm run build antes de iniciar em produção).
 
-COMO APLICAR
-Extraia o ZIP na raiz do seu projeto atual, mantendo a estrutura de pastas e substituindo os arquivos existentes. A atualização precisa dos quatro arquivos abaixo juntos:
-- public/editor.html
-- app/api/generate-copy/route.ts
-- app/api/regenerate-slide/route.ts
-- lib/copy-controls.ts (novo)
+Inclui todas as correções anteriores e os controles para preservar ou reescrever texto e escolher os destaques.
 
-O arquivo tests/copy-controls.test.cjs é opcional para executar os testes localmente, e não participa da aplicação em produção.
-Reinicie npm run dev para testar. Para publicar, faça commit, push e aguarde o novo deploy. Recarregue com Ctrl + F5.
+Novidades: Editorial Rubi, Studio Orgânico, Neon Estratégico, Pôster Criativo e Teacher Editorial. Escolha em Templates. Na geração, aba Estilo, ative a opção de variar a composição. Também pode usar “Variar composição com minha paleta” no editor; esse botão mantém texto e paleta. Cada slide permite escolher composição e fonte.
 
-Não é necessário substituir o projeto inteiro, apagar .git ou alterar as chaves de .env.local. Não foram adicionadas dependências de produção.
+Os layouts são originais, inspirados nas referências. Fotos precisam ser fornecidas ou obtidas pelo recurso de imagens existente; não há recorte automático de pessoas, geração 3D ou reprodução exata das referências.
 
-COMO USAR
-No início do modal Gerar com IA, escolha:
-1. Tratamento do texto:
-   - Reescrever e melhorar: a IA pode sintetizar e reformular a escrita.
-   - Só organizar (manter palavras): exige texto original ou URL. O servidor monta títulos e apoios a partir de trechos do texto fornecido. Não usa redação inventada pela IA. Mantém a sequência de palavras, ajustando apenas a separação entre título, apoio e slides. Se houver um CTA escrito por você, ele pode ser incluído como parte do material.
-2. Palavras em destaque:
-   - IA escolhe: a IA sugere expressões presentes no conteúdo.
-   - Eu escolho: informe palavras ou expressões separadas por vírgula.
-   - Não destacar: nenhum marca-texto automático é aplicado.
+A composição acontece em HTML/CSS e não adiciona cobrança por geração. A IA de texto e os serviços externos continuam sujeitos às cotas e condições do provedor.
 
-Em Ações do slide, você também pode ajustar essas decisões antes de regenerar um slide. Preservar título e apoio mantém o texto atual, atualizando somente visual/destaques. Manter minha escolha usa o campo Palavras em destaque já existente no editor.
-As decisões ficam salvas no projeto. É possível editar texto e marca-texto manualmente no editor independentemente da autorização dada à IA.
-
-PRESERVAÇÃO
-O servidor valida os cortes sugeridos pela IA para manter todas as palavras originais uma vez, na ordem. Se a sugestão for inválida, refaz a divisão usando o texto original e apresenta um aviso. Textos curtos podem resultar em menos slides para evitar cards com palavras isoladas. Não acrescenta CTA automático neutro no modo Só organizar.
-
-VALIDAÇÃO
-Build Next.js e TypeScript aprovados.
-JavaScript inline aprovado no node --check.
-15 testes automatizados da lógica e dos endpoints aprovados.
-58 verificações no Chromium aprovadas, incluindo os novos controles, persistência, edição, ícones, camadas e exportação PNG.
-Testes de IA com provedores/respostas simulados; não foram feitas chamadas reais com suas chaves.
-
-TESTE LOCAL
-node --test tests/copy-controls.test.cjs
-
-COMMIT SUGERIDO
-feat: add AI copy and highlight controls
+Validação: 58 verificações funcionais do editor/exportação; cinco famílias renderizadas, diversidade de composição e preservação de texto/paleta verificadas no navegador. Testes da IA usam respostas simuladas, sem consumir uma chave real.
