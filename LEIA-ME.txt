@@ -1,0 +1,32 @@
+CRIATTO — CORREÇÃO DO EDITOR
+
+Base: CRIATTO (2).zip enviado nesta conversa.
+Arquivo do projeto alterado: public/editor.html.
+
+COMO APLICAR
+1. Extraia este ZIP em uma pasta temporária.
+2. Copie public/editor.html para a pasta public do seu projeto atual, substituindo o editor.html existente.
+3. Reinicie npm run dev para testar localmente. Caso esteja na Vercel, faça commit, push e aguarde o novo deploy.
+4. Recarregue a página com Ctrl + F5.
+
+Não precisa substituir o projeto inteiro, apagar .git, alterar .env.local ou rodar git init. As APIs e as novas features do seu projeto foram mantidas.
+
+COMMIT SUGERIDO
+fix: restore editor initialization and SVG rendering
+
+DIAGNÓSTICO
+- DEFAULT_LAYER_ORDER era acessado ao criar o primeiro slide antes da inicialização da constante. Erro reproduzido: Cannot access 'DEFAULT_LAYER_ORDER' before initialization. O script parava antes de conectar os botões.
+- iconHTML consultava ICON_SVG pelo nome Lucide, mas o mapa usa o ID interno. Por isso os ícones ficavam vazios.
+- O z-index do contêiner dos textos impedia que eles participassem da ordem das outras camadas.
+- Ajustados edição direta, histórico das edições, destaque de expressões com pontuação e migração de projetos salvos.
+- SVGs são preparados como imagens no card temporário de exportação para preservar decorações e ícones no PNG.
+
+VALIDAÇÃO
+- Build de produção Next.js: aprovado.
+- TypeScript: aprovado.
+- JavaScript inline: node --check aprovado.
+- 42 verificações de navegador Chromium: aprovadas, sem erros JavaScript não tratados.
+- Exportação PNG real: 1080 x 1350, incluindo verificação de pixel do asterisco.
+- IA: respostas simuladas nos testes de integração da interface. Não foi feita chamada real aos provedores com suas chaves.
+
+Conteúdo de verificacoes.json: resultados das verificações desta correção.
