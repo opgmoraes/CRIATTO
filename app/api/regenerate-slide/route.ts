@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateTextWithFallback } from "../../../lib/ai-providers";
+import { normalizeCopyOptions, highlightInstructions, finalizeRegeneratedSlide } from "../../../lib/copy-controls";
 
 // Regenera UM slide, usando o mesmo roteador de provedores (Groq → Gemini → OpenRouter)
 // do /api/generate-copy e levando em conta o contexto do restante do carrossel.
@@ -40,7 +41,9 @@ JSON estrito:
 
 export async function POST(req: NextRequest) {
   try {
-    const { theme, tone, audience, slideIndex, totalSlides, format, current, others } = await req.json();
+    const body = await req.json();
+    const { theme, tone, audience, slideIndex, totalSlides, format, current, others, cta } = body;
+    const copyOptions = normalizeCopyOptions(body.copyOptions);
     if (typeof slideIndex !== "number" || !current) {
       return NextResponse.json({ error: "Dados do slide ausentes." }, { status: 400 });
     }
@@ -51,14 +54,17 @@ TOM DE VOZ: ${tone || "direto e claro"}
 PÚBLICO-ALVO: ${audience || "geral"}
 FORMATO: ${format || "carousel"}
 SLIDE: ${slideIndex + 1} de ${totalSlides} — papel: ${role}
-VERSÃO ATUAL (reescreva de forma diferente): título="${current.title}" | apoio="${current.supportText}"
+VERSÃO ATUAL (${copyOptions.textMode === "preserve" ? "preserve as palavras exatamente" : "reescreva de forma diferente"}): título="${current.title}" | apoio="${current.supportText}"
+CTA FORNECIDO: ${cta || "(nenhum — mantenha a intenção atual)"}
 OUTROS SLIDES (para manter coerência e não repetir): ${(others || []).join(" | ") || "(nenhum)"}`.trim();
 
-    const { result, providerUsed } = await generateTextWithFallback(SYSTEM_PROMPT, userText);
-    if (!result?.title) throw new Error("A IA retornou uma resposta sem título.");
+    const preservePrompt = `Você escolhe somente ícone, palavras em destaque e direção visual para UM slide existente. O usuário não autorizou reescrita. Copie title e supportText exatamente. Não adicione ou remova palavras. Retorne JSON com title, supportText, icon, highlightWords, highlightStyle, palette_strategy e image_query. Use somente os ícones e estratégias desta lista:\n${SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("ÍCONES:"))}`;
+    const systemPrompt = `${copyOptions.textMode === "preserve" ? preservePrompt : SYSTEM_PROMPT}\n\nDECISÃO DO USUÁRIO (prioritária sobre regras de destaque anteriores):\n${highlightInstructions(copyOptions)}`;
+    const { result, providerUsed } = await generateTextWithFallback(systemPrompt, userText);
+    const slide = finalizeRegeneratedSlide(result, current, copyOptions);
     return NextResponse.json({
-      slide: { title: result.title, supportText: result.supportText ?? "", icon: result.icon || "none", visualIntent: result.visual_intent || "", highlightWords: Array.isArray(result.highlightWords) ? result.highlightWords : [], highlightStyle: result.highlightStyle || "solid", paletteStrategy: result.palette_strategy || "base", imageQuery: result.image_query || "" },
-      providerUsed,
+      slide: { title: slide.title, supportText: slide.supportText, icon: slide.icon || "none", visualIntent: slide.visual_intent || "", highlightWords: slide.highlightWords, highlightStyle: slide.highlightStyle || "solid", paletteStrategy: slide.palette_strategy || "base", imageQuery: slide.image_query || "" },
+      providerUsed, copyOptions,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Erro ao regenerar slide." }, { status: 500 });

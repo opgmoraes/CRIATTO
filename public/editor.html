@@ -253,6 +253,12 @@ input,select,textarea{font-family:inherit;}
   <div class="modal">
     <h2 id="aiModalTitle">Gerar carrossel com IA</h2>
     <div class="sub">Referências + conteúdo + direção → roteiro estruturado, pronto pra editar. Nada é gerado sem sua confirmação.</div>
+    <div class="row2">
+      <div class="field"><label for="aiTextMode">Tratamento do texto</label><select id="aiTextMode"><option value="rewrite">Reescrever e melhorar</option><option value="preserve">Só organizar (manter palavras)</option></select></div>
+      <div class="field"><label for="aiHighlightMode">Palavras em destaque</label><select id="aiHighlightMode"><option value="auto">IA escolhe</option><option value="manual">Eu escolho</option><option value="none">Não destacar</option></select></div>
+    </div>
+    <div id="aiTextHint" class="layer-hint" style="margin:0 0 14px"></div>
+    <div class="field" id="aiManualHighlightField" hidden><label for="aiHighlightWords">Quais palavras ou expressões destacar?</label><input type="text" id="aiHighlightWords" placeholder="Ex: liberdade, resultado, foco"><div class="layer-hint">Separe por vírgula. Só serão marcadas expressões que existirem no texto.</div></div>
     <div class="modal-tabs">
       <button data-tab="ref" class="active">1. Referências</button>
       <button data-tab="content">2. Conteúdo</button>
@@ -265,7 +271,7 @@ input,select,textarea{font-family:inherit;}
     </div>
     <div class="modal-panel" data-panel="content">
       <div class="field"><label>Tema</label><input type="text" id="aiTheme" placeholder="Ex: 5 erros de quem está começando a programar"></div>
-      <div class="field"><label>Texto bruto / rascunho / roteiro (opcional)</label><textarea id="aiRawText" style="min-height:90px" placeholder="Cole aqui um texto, artigo, tópicos ou rascunho..."></textarea></div>
+      <div class="field"><label for="aiRawText" id="aiRawLabel">Texto bruto / rascunho / roteiro (opcional)</label><textarea id="aiRawText" style="min-height:90px" placeholder="Cole aqui um texto, artigo, tópicos ou rascunho..."></textarea></div>
       <div class="row2">
         <div class="field"><label>Tom de voz</label><input type="text" id="aiTone" placeholder="Direto, pessoal e provocativo"></div>
         <div class="field"><label>Público-alvo</label><input type="text" id="aiAudience" placeholder="Desenvolvedores iniciantes"></div>
@@ -354,7 +360,10 @@ function newSlide(i){
   return { id:uid(), label: i===0? "NEWS":"", title:"Título do slide "+(i+1), supportText:"Texto de apoio explicando o contexto deste card.", highlightWords:"", highlightStyle:"solid", icon:"none", iconSize:"medium", iconColor:"accent",
     image:null, bgColor:"#1c1c22", layers:[...DEFAULT_LAYER_ORDER], spec:{bg:'bg',fg:'fg',ac:'ac'}, align:'left', vpos:'bottom', scale:'m', deco:'none', frame:'none', layout:'default' };
 }
-const DEFAULTS={pal:{bg:"#1c1c22",fg:"#ffffff",ac:"#ff5a2c",alt:"#ff5a2c"},fonts:{headline:"Inter",body:"Inter"},logo:null,ctx:{},profile:{name:"Seu Nome",verified:true,avatar:null}};
+const DEFAULT_COPY_OPTIONS={textMode:'rewrite',highlightMode:'auto',highlightWords:''};
+function copyChoices(input){ const o=input&&typeof input==='object'?input:{}; return {textMode:o.textMode==='preserve'?'preserve':'rewrite',highlightMode:['manual','none'].includes(o.highlightMode)?o.highlightMode:'auto',highlightWords:Array.isArray(o.highlightWords)?o.highlightWords.join(', '):String(o.highlightWords||'')}; }
+function chosenHighlightWords(slide,options){ return options.highlightMode==='none'?'':options.highlightMode==='manual'?options.highlightWords:(Array.isArray(slide.highlightWords)?slide.highlightWords.join(', '):String(slide.highlightWords||'')); }
+const DEFAULTS={aiOptions:{...DEFAULT_COPY_OPTIONS},pal:{bg:"#1c1c22",fg:"#ffffff",ac:"#ff5a2c",alt:"#ff5a2c"},fonts:{headline:"Inter",body:"Inter"},logo:null,ctx:{},profile:{name:"Seu Nome",verified:true,avatar:null}};
 const FONT_BANK=[["Inter","400;700;900","Sans-serif"],["Montserrat","400;700;900","Sans-serif"],["Poppins","400;700;900","Sans-serif"],["Space Grotesk","400;700","Sans-serif"],["Archivo","400;700;900","Sans-serif"],["Manrope","400;700;800","Sans-serif"],["Plus Jakarta Sans","400;700;800","Sans-serif"],["DM Sans","400;700","Sans-serif"],["Outfit","400;700;900","Sans-serif"],["Sora","400;700;800","Sans-serif"],["Work Sans","400;700;900","Sans-serif"],["Rubik","400;700;900","Sans-serif"],["Lato","400;700;900","Sans-serif"],["Open Sans","400;700;800","Sans-serif"],["Roboto","400;700;900","Sans-serif"],["Nunito","400;700;900","Sans-serif"],["IBM Plex Sans","400;700","Sans-serif"],["Lexend","400;700;900","Sans-serif"],
 ["Anton","400","Display"],["Bebas Neue","400","Display"],["Oswald","400;700","Display"],["Archivo Black","400","Display"],["Bowlby One","400","Display"],["Big Shoulders Display","400;700;900","Display"],["League Gothic","400","Display"],["Unbounded","400;700;900","Display"],["Syne","400;700;800","Display"],["Abril Fatface","400","Display"],
 ["Playfair Display","400;700;900","Serif"],["DM Serif Display","400","Serif"],["Fraunces","400;700;900","Serif"],["Instrument Serif","400","Serif"],["Bodoni Moda","400;700;900","Serif"],["Libre Baskerville","400;700","Serif"],["Merriweather","400;700;900","Serif"],["Lora","400;700","Serif"],
@@ -374,7 +383,7 @@ const TEMPLATES=[
  {name:"Minimalista",pal:{bg:"#f6f5f1",fg:"#111111",ac:"#ff5a2c",alt:"#111111"},fonts:["Inter","Inter"],slides:[sp('bg','fg','ac',{vpos:'middle',frame:'line',scale:'l'}),sp('bg','fg','ac',{vpos:'middle',frame:'line',scale:'l'}),sp('alt','bg','ac',{vpos:'middle',frame:'line',scale:'l'})]}];
 const LOGO_POS=["top-left","top-center","top-right","bottom-left","bottom-center","bottom-right"];
 const LOGO_W={small:12,medium:20,large:30};
-let state = { ...DEFAULTS, pal:{...DEFAULTS.pal}, fonts:{...DEFAULTS.fonts}, profile:{...DEFAULTS.profile}, projectName:"Meu carrossel", instagramHandle:"seuperfil", format:"carousel", ratio:"4:5", slides:[newSlide(0)] };
+let state = { ...DEFAULTS, aiOptions:{...DEFAULT_COPY_OPTIONS}, pal:{...DEFAULTS.pal}, fonts:{...DEFAULTS.fonts}, profile:{...DEFAULTS.profile}, projectName:"Meu carrossel", instagramHandle:"seuperfil", format:"carousel", ratio:"4:5", slides:[newSlide(0)] };
 let activeIndex=0, history=[], future=[];
 
 const RATIO_VALUES = { "1:1":1, "4:5":1.25, "9:16":16/9 };
@@ -412,6 +421,8 @@ function load(){
     if(!restored.slides.length) restored.slides=[newSlide(0)];
     if(!FORMAT_RATIOS[restored.format]) restored.format='carousel';
     if(!FORMAT_RATIOS[restored.format].includes(restored.ratio)) restored.ratio=FORMAT_RATIOS[restored.format][0];
+    restored.aiOptions=copyChoices(restored.aiOptions);
+    restored.slides.forEach(slide=>{ if(slide.aiOptions) slide.aiOptions=copyChoices(slide.aiOptions); });
     state=restored; activeIndex=0; return true;
   }catch(e){ console.warn('Não foi possível restaurar o projeto salvo.',e); return false; }
 }
@@ -550,7 +561,7 @@ function deleteSlide(){ if(state.slides.length<=1) return; pushHistory(); state.
 const chips=(a,o,c)=>o.map(([v,l])=>`<div class="chip ${c===v?'active':''}" data-${a}="${v}">${l}</div>`).join('');
 const colorRow=(id,l,v)=>`<div class="field"><label>${l}</label><div class="color-row"><input type="color" id="${id}" value="${v}"><input type="text" id="${id}Hex" value="${v}"></div></div>`;
 function renderLeftPanel(){
-  const s=activeSlide(), lp=document.getElementById('leftpanel'), L=state.logo, P=state.pal, pf=state.profile;
+  const s=activeSlide(), lp=document.getElementById('leftpanel'), L=state.logo, P=state.pal, pf=state.profile, ai=copyChoices(s.aiOptions||state.aiOptions);
   const fmt=(k,t,on)=>`<button data-fmt="${k}" title="${t}" class="${on?'on':''}">${{bold:'<b>B</b>',underline:'<u>U</u>',left:'⯇',center:'≡',right:'⯈',justify:'☰'}[k]}</button>`;
   lp.innerHTML=`
     <h1>Editar slide (${activeIndex+1})</h1>
@@ -613,7 +624,9 @@ function renderLeftPanel(){
       </div></div>
     <div class="section"><div class="section-head"><span class="dot"></span> Ações do slide <span class="chev">▾</span></div>
       <div class="section-body">
-        <div class="slide-actions" style="margin-bottom:8px"><button id="a-regen" style="background:var(--ink);color:#fff">✨ Regenerar este slide com IA</button></div>
+        <div class="field"><label for="f-aiTextMode">A IA neste slide</label><select id="f-aiTextMode"><option value="rewrite" ${ai.textMode==='rewrite'?'selected':''}>Reescrever e melhorar</option><option value="preserve" ${ai.textMode==='preserve'?'selected':''}>Preservar título e apoio</option></select></div>
+        <div class="field"><label for="f-aiHighlightMode">Destaques neste slide</label><select id="f-aiHighlightMode"><option value="auto" ${ai.highlightMode==='auto'?'selected':''}>IA escolhe</option><option value="manual" ${ai.highlightMode==='manual'?'selected':''}>Manter minha escolha</option><option value="none" ${ai.highlightMode==='none'?'selected':''}>Não destacar</option></select><div class="layer-hint">Em “Manter minha escolha”, use o campo “Palavras em destaque” acima.</div></div>
+        <div class="slide-actions" style="margin-bottom:8px"><button id="a-regen" style="background:var(--ink);color:#fff">${ai.textMode==='preserve'?'✨ Atualizar visual/destaques com IA':'✨ Regenerar este slide com IA'}</button></div>
         <div class="slide-actions"><button id="a-dup">Duplicar</button><button id="a-up">Mover ↑</button><button id="a-down">Mover ↓</button></div>
         <div class="slide-actions" style="margin-top:8px"><button id="a-del" class="danger" style="width:100%">Excluir slide</button></div>
       </div></div>`;
@@ -658,6 +671,8 @@ function bindLeftPanel(s){
   q('a-dup').onclick=()=>commit(()=>{ const c=JSON.parse(JSON.stringify(s)); c.id=uid(); state.slides.splice(activeIndex+1,0,c); activeIndex++; });
   q('a-up').onclick=()=>{ if(activeIndex===0) return; commit(()=>{ [state.slides[activeIndex-1],state.slides[activeIndex]]=[state.slides[activeIndex],state.slides[activeIndex-1]]; activeIndex--; }); };
   q('a-down').onclick=()=>{ if(activeIndex===state.slides.length-1) return; commit(()=>{ [state.slides[activeIndex+1],state.slides[activeIndex]]=[state.slides[activeIndex],state.slides[activeIndex+1]]; activeIndex++; }); };
+  q('f-aiTextMode').onchange=e=>commit(()=>{ s.aiOptions={...copyChoices(s.aiOptions||state.aiOptions),textMode:e.target.value}; });
+  q('f-aiHighlightMode').onchange=e=>commit(()=>{ s.aiOptions={...copyChoices(s.aiOptions||state.aiOptions),highlightMode:e.target.value}; });
   q('a-del').onclick=deleteSlide; q('a-regen').onclick=regenSlide;
 }
 /* ---- templates ---- */
@@ -692,14 +707,15 @@ async function findImages(queries,source){
   const d=await r.json(); if(!r.ok) throw new Error(d.error||'Falha ao buscar imagens'); return d;
 }
 async function regenSlide(){
-  const s=activeSlide(), btn=document.getElementById('a-regen'), c=state.ctx||{};
+  const s=activeSlide(), btn=document.getElementById('a-regen'), c=state.ctx||{}, index=activeIndex;
+  const copyOptions=copyChoices(s.aiOptions||state.aiOptions); if(copyOptions.highlightMode==='manual') copyOptions.highlightWords=s.highlightWords||'';
   btn.disabled=true; btn.textContent='Gerando...';
   try{
     const res=await fetch('/api/regenerate-slide',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      theme:c.theme||'', tone:c.tone||'', audience:c.audience||'', format:state.format, slideIndex:activeIndex, totalSlides:state.slides.length,
+      theme:c.theme||'', tone:c.tone||'', audience:c.audience||'', format:state.format, slideIndex:index, totalSlides:state.slides.length, copyOptions, cta:c.cta||'',
       current:{title:s.title,supportText:s.supportText,icon:s.icon||'none',highlightWords:s.highlightWords||''}, others:state.slides.filter((_,i)=>i!==activeIndex).map(x=>x.title) })});
     const d=await res.json(); if(!res.ok) throw new Error(d.error||'Falha ao regenerar');
-    pushHistory(); s.title=d.slide.title; s.supportText=d.slide.supportText; s.highlightWords=Array.isArray(d.slide.highlightWords)?d.slide.highlightWords.join(', '):(d.slide.highlightWords||''); s.highlightStyle=d.slide.highlightStyle||'solid'; s.icon=ICON_MAP[d.slide.icon]?.id||iconForText(s.title,s.supportText); s.iconSize=s.iconSize||'medium'; mixPalette(s,activeIndex,state.slides.length,d.slide.paletteStrategy||'misturada'); s.iconColor=isLight(col(s,'bg'))?'text':(activeIndex%2?'alt':'accent'); s.decoColor=activeIndex%2?'alt':'accent';
+    pushHistory(); if(copyOptions.textMode==='rewrite'){ s.title=d.slide.title; s.supportText=d.slide.supportText; } s.aiOptions={...copyOptions}; s.highlightWords=chosenHighlightWords(d.slide,copyOptions); s.highlightStyle=d.slide.highlightStyle||'solid'; s.icon=ICON_MAP[d.slide.icon]?.id||iconForText(s.title,s.supportText); s.iconSize=s.iconSize||'medium'; mixPalette(s,index,state.slides.length,d.slide.paletteStrategy||'misturada'); s.iconColor=isLight(col(s,'bg'))?'text':(index%2?'alt':'accent'); s.decoColor=index%2?'alt':'accent';
     if(c.autoImages){ try{ const im=await findImages([d.slide.imageQuery||s.title],c.autoImages); if(im.images[0]) s.image=im.images[0]; }catch(e){ console.warn(e); } }
     renderAll(); save();
   }catch(e){ alert('Não foi possível regenerar o slide: '+e.message); renderLeftPanel(); }
@@ -793,9 +809,21 @@ function initAIPanel(){
     chip.onclick=()=>{ selectedStyle = selectedStyle===st? null: st; chips.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); if(selectedStyle) chip.classList.add('active'); };
     chips.appendChild(chip);
   });
+  const refreshChoices=()=>{
+    const preserve=document.getElementById('aiTextMode').value==='preserve';
+    document.getElementById('aiRawLabel').textContent=preserve?'Texto original (ou use a URL abaixo)':'Texto bruto / rascunho / roteiro (opcional)';
+    document.getElementById('aiTone').disabled=preserve; document.getElementById('aiAudience').disabled=preserve;
+    document.getElementById('aiTextHint').textContent=preserve?'Suas palavras são mantidas. Cole o texto na aba Conteúdo ou informe uma URL. A IA só divide o conteúdo em título, apoio e slides.':'A IA pode reescrever, sintetizar e melhorar títulos e textos de apoio.';
+    document.getElementById('aiManualHighlightField').hidden=document.getElementById('aiHighlightMode').value!=='manual';
+  };
+  const saveChoices=()=>{ state.aiOptions=copyChoices({textMode:document.getElementById('aiTextMode').value,highlightMode:document.getElementById('aiHighlightMode').value,highlightWords:document.getElementById('aiHighlightWords').value}); save(); refreshChoices(); };
+  document.getElementById('aiTextMode').onchange=saveChoices;
+  document.getElementById('aiHighlightMode').onchange=saveChoices;
+  document.getElementById('aiHighlightWords').oninput=saveChoices;
   const tsel=document.getElementById('aiTpl'); tsel.innerHTML='<option value="">Manter o visual atual</option>'+TEMPLATES.map((t,i)=>`<option value="${i}">${t.name}</option>`).join('');
   tsel.onchange=()=>{ if(tsel.value==='') return; const t=TEMPLATES[tsel.value]; ['bg','fg','ac','alt'].forEach(k=>document.getElementById('aiC-'+k).value=t.pal[k]); document.getElementById('aiFh').innerHTML=fontOpts(t.fonts[0]); document.getElementById('aiFb').innerHTML=fontOpts(t.fonts[1]); };
   document.getElementById('btnOpenAI').onclick=()=>{
+    const options=copyChoices(state.aiOptions); document.getElementById('aiTextMode').value=options.textMode; document.getElementById('aiHighlightMode').value=options.highlightMode; document.getElementById('aiHighlightWords').value=options.highlightWords; refreshChoices();
     ['bg','fg','ac','alt'].forEach(k=>document.getElementById('aiC-'+k).value=state.pal[k]); tsel.value='';
     document.getElementById('aiFh').innerHTML=fontOpts(state.fonts.headline); document.getElementById('aiFb').innerHTML=fontOpts(state.fonts.body);
     const countField = document.getElementById('aiSlideCount');
@@ -829,6 +857,8 @@ function setAIStatus(msg,kind){ const el=document.getElementById('aiStatus'); el
 async function runAIGeneration(){
   const genBtn=document.getElementById('aiGenerate'); genBtn.disabled=true;
   try{
+    const copyOptions=copyChoices({textMode:document.getElementById('aiTextMode').value,highlightMode:document.getElementById('aiHighlightMode').value,highlightWords:document.getElementById('aiHighlightWords').value});
+    if(copyOptions.textMode==='preserve'&&!document.getElementById('aiRawText').value.trim()&&!document.getElementById('aiUrl').value.trim()) throw new Error('Para só organizar, cole o texto original na aba Conteúdo ou informe a URL de um artigo.');
     let visualDirection=selectedStyle||'';
     const freeDirection=document.getElementById('aiDirection').value.trim();
     if(freeDirection) visualDirection=(visualDirection? visualDirection+' — ':'')+freeDirection;
@@ -847,14 +877,15 @@ async function runAIGeneration(){
     const requestedCount = state.format==='post' ? 1 : (parseInt(document.getElementById('aiSlideCount').value)||7);
     const payload={ theme, rawText, articleUrl, tone:document.getElementById('aiTone').value.trim(), audience:document.getElementById('aiAudience').value.trim(),
       cta:document.getElementById('aiCta').value.trim(), slideCount:requestedCount, visualDirection,
-      format: state.format }; // post = 1 slide autoexplicativo; story = frames curtos e diretos; carousel = sequência com hook/cta
+      format: state.format, copyOptions }; // post = 1 slide autoexplicativo; story = frames curtos e diretos; carousel = sequência com hook/cta
     const res2=await fetch('/api/generate-copy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data2=await res2.json(); if(!res2.ok) throw new Error(data2.error||'Falha ao gerar roteiro');
     const tpl=document.getElementById('aiTpl').value;
     ['bg','fg','ac','alt'].forEach(k=>state.pal[k]=document.getElementById('aiC-'+k).value);
     state.fonts={headline:document.getElementById('aiFh').value,body:document.getElementById('aiFb').value};
-    buildSlidesFromScript(data2.script, autoImages? [] : refImages, tpl!==''?TEMPLATES[tpl]:null);
-    state.ctx={theme,tone:payload.tone,audience:payload.audience,autoImages}; save();
+    state.aiOptions={...copyOptions};
+    buildSlidesFromScript(data2.script, autoImages? [] : refImages, tpl!==''?TEMPLATES[tpl]:null,copyOptions);
+    state.ctx={theme,tone:payload.tone,audience:payload.audience,cta:payload.cta,autoImages}; save();
     let msg=`Roteiro gerado com sucesso (via ${data2.providerUsed}).`;
     if(data2.script.warnings?.length) msg+=' Avisos: '+data2.script.warnings.join(' | ');
     if(autoImages){
@@ -869,15 +900,15 @@ async function runAIGeneration(){
 function contrastColor(bg, P){ const preferred=[P.fg,P.bg,P.alt,P.ac].filter(Boolean); const score=(a,b)=>{ const lum=h=>{const n=parseInt((h||'#000').slice(1),16); const f=x=>{x/=255;return x<=.03928?x/12.92:Math.pow((x+.055)/1.055,2.4)}; return .2126*f(n>>16)+.7152*f((n>>8)&255)+.0722*f(n&255)}; const l1=lum(a),l2=lum(b); return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)}; return preferred.sort((a,b)=>score(b,bg)-score(a,bg))[0]||'#fff'; }
 function mixPalette(s,idx,total,strategy){ const P=state.pal; const plans={base:['bg','fg','ac'],alternativa:['alt',null,'ac'],destaque:['bg',null,'alt'],invertida:['ac',null,'bg'],misturada:[idx%3===1?'alt':'bg',null,idx%2?'alt':'ac']}; const plan=plans[strategy]||plans.misturada; const bgKey=plan[0], acKey=plan[2]; const bg=P[bgKey]||P.bg, ac=P[acKey]||P.ac; const fgKey=plan[1]; s.spec={bg:bgKey,ac:acKey}; if(fgKey){s.spec.fg=fgKey; delete s.fg;} else {s.fg=contrastColor(bg,P); delete s.spec.fg;} s.bgColor=bg; }
 function autoMixPalette(s,idx,total){ const strategies=['base','misturada','alternativa','destaque','invertida']; mixPalette(s,idx,total,strategies[idx%strategies.length]); }
-function buildSlidesFromScript(script, references, tpl){
+function buildSlidesFromScript(script, references, tpl, options=copyChoices(state.aiOptions)){
   pushHistory();
   let scriptSlides=script.slides||[];
   if(state.format==='post') scriptSlides=scriptSlides.slice(0,1);
   const newSlides=scriptSlides.map((sd,idx)=>{
     const s=newSlide(idx);
-    s.title=sd.title||s.title; s.imageQuery=sd.image_query||'';
-    s.supportText=sd.supportText||sd.subtitle||sd.body||s.supportText;
-    s.highlightWords=Array.isArray(sd.highlightWords)?sd.highlightWords.join(', '):(sd.highlightWords||'');
+    s.title=sd.title??s.title; s.imageQuery=sd.image_query||'';
+    s.supportText=sd.supportText??sd.subtitle??sd.body??s.supportText;
+    s.aiOptions={...options}; s.highlightWords=chosenHighlightWords(sd,options);
     s.highlightStyle=sd.highlightStyle||'solid'; s.paletteStrategy=sd.palette_strategy||'misturada';
     s.icon=ICON_MAP[sd.icon]?.id||iconForText(s.title,s.supportText); s.iconSize='medium'; s.iconColor='accent'; s.decoColor='accent';
     s.label = sd.role==='hook' ? 'HOOK' : (sd.role==='cta' ? 'SALVE' : '');

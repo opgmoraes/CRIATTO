@@ -38,6 +38,22 @@
     "Regenerate individual slide",
     "Actual PNG export dimensions",
     "Decorative SVG remains visible in exported PNG",
+    "Generation exposes independent copy and highlight choices",
+    "Preserve mode explains the source requirement and disables rewriting settings",
+    "Preserve mode requires source text",
+    "Generation decisions survive reopening the modal",
+    "Manual highlights reveal the words field",
+    "Generation sends explicitly chosen manual words",
+    "Manual choice does not use model-selected words",
+    "No highlights overrides model-selected words",
+    "Preserve mode reaches the API with source text",
+    "Preservation does not insert a placeholder into empty support",
+    "Regeneration inherits the generation decisions",
+    "Preserve regeneration has an accurate button label",
+    "Preserve regeneration leaves title and support intact",
+    "Regeneration sends choices and renders no highlights",
+    "Manual regeneration keeps selected words",
+    "Per-slide regeneration decisions survive reload",
     "Legacy project migration",
     "Empty saved project recovery",
     "Invalid saved format recovery",
@@ -45,5 +61,10 @@
   ],
   "errors": [],
   "aiApi": "mocked",
-  "build": "passed"
+  "build": "passed",
+  "api_tests": {
+    "passed": 15,
+    "failed": 0,
+    "provider": "simulated"
+  }
 }

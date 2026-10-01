@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateTextWithFallback } from "../../../lib/ai-providers";
 import { extractArticle } from "../../../lib/extract";
+import { normalizeCopyOptions, highlightInstructions, PRESERVE_SYSTEM_PROMPT, indexedSource, finalizeGeneratedScript } from "../../../lib/copy-controls";
 
 // Seção 8 da especificação: gera hook, título, subtítulo, desenvolvimento,
 // exemplos, destaques, números, frases de impacto e CTA — respeitando o
@@ -58,6 +59,7 @@ Responda em JSON estrito:
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const copyOptions = normalizeCopyOptions(body.copyOptions);
     const {
       theme,
       rawText,
@@ -69,12 +71,12 @@ export async function POST(req: NextRequest) {
       format, // "carousel" | "post" | "story"
       articleUrl,
     } = body;
-    let { rawText: raw } = body;
+    let raw = typeof body.rawText === "string" ? body.rawText : "";
 
     if (articleUrl) {
       try {
         const article = await extractArticle(articleUrl);
-        raw = `${raw ? raw + "\n\n" : ""}CONTEÚDO EXTRAÍDO DO ARTIGO (${articleUrl}):\n${article}`;
+        raw = `${raw ? raw + "\n\n" : ""}${copyOptions.textMode === "preserve" ? article : `CONTEÚDO EXTRAÍDO DO ARTIGO (${articleUrl}):\n${article}`}`;
       } catch (e: any) {
         return NextResponse.json({ error: `URL: ${e.message}` }, { status: 400 });
       }
@@ -86,6 +88,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+    if (copyOptions.textMode === "preserve" && !raw.trim()) {
+      return NextResponse.json({ error: "Para só organizar, cole o texto original ou informe a URL de um artigo. Um tema sozinho exige criação de texto." }, { status: 400 });
+    }
+    const source = copyOptions.textMode === "preserve" && typeof cta === "string" && cta.trim() && !raw.includes(cta.trim()) ? `${raw}\n\n${cta.trim()}` : raw;
+    const requestedCount = format === "post" ? 1 : Math.max(1, Math.min(20, Math.trunc(Number(slideCount)) || 7));
 
     const userText = `
 TEMA: ${theme || "(não informado, use o texto bruto abaixo)"}
@@ -96,14 +103,19 @@ ${raw || "(nenhum, gere a partir do tema apenas — mas não invente fatos espec
 TOM DE VOZ: ${tone || "direto e claro"}
 PÚBLICO-ALVO: ${audience || "geral"}
 CTA FINAL: ${cta || "(nenhum informado — use um CTA neutro de salvar o post)"}
-QUANTIDADE DE SLIDES DESEJADA: ${slideCount || 7}
+QUANTIDADE DE SLIDES DESEJADA: ${requestedCount}
 FORMATO: ${format || "carousel"}
 DIREÇÃO VISUAL (apenas para calibrar tom da escrita): ${visualDirection || "(nenhuma)"}
 `.trim();
 
-    const { result, providerUsed } = await generateTextWithFallback(SYSTEM_PROMPT, userText);
+    const systemPrompt = `${copyOptions.textMode === "preserve" ? PRESERVE_SYSTEM_PROMPT : SYSTEM_PROMPT}\n\nDECISÃO DO USUÁRIO (prioritária sobre regras de destaque anteriores):\n${highlightInstructions(copyOptions)}`;
+    const prompt = copyOptions.textMode === "preserve"
+      ? `${indexedSource(source)}\nQUANTIDADE DE SLIDES: ${requestedCount}\nFORMATO: ${format || "carousel"}\nDIREÇÃO VISUAL: ${visualDirection || "(nenhuma)"}`
+      : userText;
+    const { result, providerUsed } = await generateTextWithFallback(systemPrompt, prompt);
+    const script = finalizeGeneratedScript(result, copyOptions, source, requestedCount);
 
-    return NextResponse.json({ script: result, providerUsed });
+    return NextResponse.json({ script, providerUsed, copyOptions });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Erro ao gerar copy." }, { status: 500 });
   }

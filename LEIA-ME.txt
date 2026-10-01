@@ -1,32 +1,44 @@
-CRIATTO — CORREÇÃO DO EDITOR
+CRIATTO — CONTROLE DO TEXTO E DOS DESTAQUES DA IA
 
-Base: CRIATTO (2).zip enviado nesta conversa.
-Arquivo do projeto alterado: public/editor.html.
+Esta atualização já contém as correções de inicialização, ícones, camadas e exportação da versão anterior.
 
 COMO APLICAR
-1. Extraia este ZIP em uma pasta temporária.
-2. Copie public/editor.html para a pasta public do seu projeto atual, substituindo o editor.html existente.
-3. Reinicie npm run dev para testar localmente. Caso esteja na Vercel, faça commit, push e aguarde o novo deploy.
-4. Recarregue a página com Ctrl + F5.
+Extraia o ZIP na raiz do seu projeto atual, mantendo a estrutura de pastas e substituindo os arquivos existentes. A atualização precisa dos quatro arquivos abaixo juntos:
+- public/editor.html
+- app/api/generate-copy/route.ts
+- app/api/regenerate-slide/route.ts
+- lib/copy-controls.ts (novo)
 
-Não precisa substituir o projeto inteiro, apagar .git, alterar .env.local ou rodar git init. As APIs e as novas features do seu projeto foram mantidas.
+O arquivo tests/copy-controls.test.cjs é opcional para executar os testes localmente, e não participa da aplicação em produção.
+Reinicie npm run dev para testar. Para publicar, faça commit, push e aguarde o novo deploy. Recarregue com Ctrl + F5.
 
-COMMIT SUGERIDO
-fix: restore editor initialization and SVG rendering
+Não é necessário substituir o projeto inteiro, apagar .git ou alterar as chaves de .env.local. Não foram adicionadas dependências de produção.
 
-DIAGNÓSTICO
-- DEFAULT_LAYER_ORDER era acessado ao criar o primeiro slide antes da inicialização da constante. Erro reproduzido: Cannot access 'DEFAULT_LAYER_ORDER' before initialization. O script parava antes de conectar os botões.
-- iconHTML consultava ICON_SVG pelo nome Lucide, mas o mapa usa o ID interno. Por isso os ícones ficavam vazios.
-- O z-index do contêiner dos textos impedia que eles participassem da ordem das outras camadas.
-- Ajustados edição direta, histórico das edições, destaque de expressões com pontuação e migração de projetos salvos.
-- SVGs são preparados como imagens no card temporário de exportação para preservar decorações e ícones no PNG.
+COMO USAR
+No início do modal Gerar com IA, escolha:
+1. Tratamento do texto:
+   - Reescrever e melhorar: a IA pode sintetizar e reformular a escrita.
+   - Só organizar (manter palavras): exige texto original ou URL. O servidor monta títulos e apoios a partir de trechos do texto fornecido. Não usa redação inventada pela IA. Mantém a sequência de palavras, ajustando apenas a separação entre título, apoio e slides. Se houver um CTA escrito por você, ele pode ser incluído como parte do material.
+2. Palavras em destaque:
+   - IA escolhe: a IA sugere expressões presentes no conteúdo.
+   - Eu escolho: informe palavras ou expressões separadas por vírgula.
+   - Não destacar: nenhum marca-texto automático é aplicado.
+
+Em Ações do slide, você também pode ajustar essas decisões antes de regenerar um slide. Preservar título e apoio mantém o texto atual, atualizando somente visual/destaques. Manter minha escolha usa o campo Palavras em destaque já existente no editor.
+As decisões ficam salvas no projeto. É possível editar texto e marca-texto manualmente no editor independentemente da autorização dada à IA.
+
+PRESERVAÇÃO
+O servidor valida os cortes sugeridos pela IA para manter todas as palavras originais uma vez, na ordem. Se a sugestão for inválida, refaz a divisão usando o texto original e apresenta um aviso. Textos curtos podem resultar em menos slides para evitar cards com palavras isoladas. Não acrescenta CTA automático neutro no modo Só organizar.
 
 VALIDAÇÃO
-- Build de produção Next.js: aprovado.
-- TypeScript: aprovado.
-- JavaScript inline: node --check aprovado.
-- 42 verificações de navegador Chromium: aprovadas, sem erros JavaScript não tratados.
-- Exportação PNG real: 1080 x 1350, incluindo verificação de pixel do asterisco.
-- IA: respostas simuladas nos testes de integração da interface. Não foi feita chamada real aos provedores com suas chaves.
+Build Next.js e TypeScript aprovados.
+JavaScript inline aprovado no node --check.
+15 testes automatizados da lógica e dos endpoints aprovados.
+58 verificações no Chromium aprovadas, incluindo os novos controles, persistência, edição, ícones, camadas e exportação PNG.
+Testes de IA com provedores/respostas simulados; não foram feitas chamadas reais com suas chaves.
 
-Conteúdo de verificacoes.json: resultados das verificações desta correção.
+TESTE LOCAL
+node --test tests/copy-controls.test.cjs
+
+COMMIT SUGERIDO
+feat: add AI copy and highlight controls
